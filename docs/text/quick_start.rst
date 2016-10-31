@@ -13,6 +13,7 @@ As the compiled tsfresh package is hosted on pypy you can easily install it with
 
    pip install tsfresh
 
+.. note:: tsfresh does not support Python 3.x yet.
 
 Dive in
 -------
