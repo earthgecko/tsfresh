@@ -256,14 +256,19 @@ class ComprehensiveFCParameters(dict):
             "value_count": [{"value": value} for value in [0, 1, np.NaN, np.PINF, np.NINF]],
             "range_count": [{"min": -1, "max": 1}],
             "approximate_entropy": [{"m": 2, "r": r} for r in [.1, .3, .5, .7, .9]],
-            "friedrich_coefficients": (lambda m: [{"coeff": coeff, "m": m, "r": 30} for coeff in range(m + 1)])(3),
-            "max_langevin_fixed_point": [{"m": 3, "r": 30}],
-            "linear_trend": [{"attr": "pvalue"}, {"attr": "rvalue"}, {"attr": "intercept"},
-                             {"attr": "slope"}, {"attr": "stderr"}],
-            "agg_linear_trend": [{"attr": attr, "chunk_len": i, "f_agg": f}
-                                 for attr in ["rvalue", "intercept", "slope", "stderr"]
-                                 for i in [5, 10, 50]
-                                 for f in ["max", "min", "mean", "var"]],
+            # @modified 20201230 - Branch #3902: v0.6.1
+            # Disabled friedrich_coefficients and max_langevin_fixed_point
+            # introduced in v0.6.0
+            # "friedrich_coefficients": (lambda m: [{"coeff": coeff, "m": m, "r": 30} for coeff in range(m + 1)])(3),
+            # "max_langevin_fixed_point": [{"m": 3, "r": 30}],
+            # @modified 20201230 - Branch #3906: v0.8.2
+            # Disabled flinear_trend and agg_linear_trend introduced in v0.8.1
+            # "linear_trend": [{"attr": "pvalue"}, {"attr": "rvalue"}, {"attr": "intercept"},
+            #                  {"attr": "slope"}, {"attr": "stderr"}],
+            # "agg_linear_trend": [{"attr": attr, "chunk_len": i, "f_agg": f}
+            #                      for attr in ["rvalue", "intercept", "slope", "stderr"]
+            #                      for i in [5, 10, 50]
+            #                      for f in ["max", "min", "mean", "var"]],
 
         })
 
