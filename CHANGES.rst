@@ -4,7 +4,17 @@ Changelog
 
 tsfresh uses `Semantic Versioning <http://semver.org/>`_
 
+Version 0.15.2
+==============
+
+- Disabled new features count_above and count_below
+
 Version 0.15.1
+==============
+
+- Changelog and documentation fixes
+
+Version 0.15.0
 ==============
 
 - Added Features
@@ -16,6 +26,11 @@ Version 0.15.1
     - Skip dask test for older python versions (#649)
     - Add missing distributor keyword (#648)
     - Fix tuple input for cwt (#645)
+
+Version 0.14.1 (2)
+==============
+
+- Merged 0.14.0 changes
 
 Version 0.14.1
 ==============
@@ -42,6 +57,10 @@ Version 0.14.0
     - Replace Benjamini-Hochberg implementation with statsmodels implementation (#570)
     - Fix the kernel and the naming of a notebook (#626)
 
+Version 0.13.1
+==============
+
+- Reverted to the v0.11.1 value_count setting
 
 Version 0.13.0
 ==============
@@ -69,6 +88,11 @@ Version 0.13.0
     - Improve performance with Numpy's sum function (#567)
     - Optimize mean_change (fixes issue #542) and correct documentation (#574)
 
+Version 0.12.1
+==============
+
+- Disabled linear_trend_timewise added in v0.12.0
+- Readded tsfresh/examples/test_tsfresh_baseline_dataset.py which was removed in v0.12.0
 
 Version 0.12.0
 ==============
@@ -84,6 +108,12 @@ Version 0.12.0
 - enable the RelevantFeatureAugmenter to be used in cross validated pipelines
 - increased scipy dependency to 1.2.0
 
+Version 0.11.3
+==============
+- Disabled new feature calculators:
+    - fft_aggregated
+    - cid_ce
+- reverted to the original mean_second_derivate_central from mean_second_derivative_central
 
 Version 0.11.2
 ==============

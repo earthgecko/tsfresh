@@ -8,6 +8,11 @@ For the naming of the features, see :ref:`feature-naming-label`.
 from inspect import getfullargspec
 
 import pandas as pd
+
+# @added 20201231 - Branch #3916: v0.13.1
+# Readded numpy for value_count
+import numpy as np
+
 from builtins import range
 
 from itertools import product
@@ -108,48 +113,101 @@ class ComprehensiveFCParameters(dict):
 
         name_to_param.update({
             "time_reversal_asymmetry_statistic": [{"lag": lag} for lag in range(1, 4)],
-            "c3": [{"lag": lag} for lag in range(1, 4)],
-            "cid_ce": [{"normalize": True}, {"normalize": False}],
+            # @modified 20201230 - Branch #3908: v0.9.1
+            # Disabled c3 added in v0.9.0
+            # "c3": [{"lag": lag} for lag in range(1, 4)],
+            # @modified 20201231 - Branch #3908: v0.11.3
+			# Disabled cid_ce added in v0.11.1
+            # "cid_ce": [{"normalize": True}, {"normalize": False}],
             "symmetry_looking": [{"r": r * 0.05} for r in range(20)],
-            "large_standard_deviation": [{"r": r * 0.05} for r in range(1, 20)],
+            # @modified 20201230 - Branch #3908: v0.9.1
+            # Revert to original large_standard_deviation
+            # "large_standard_deviation": [{"r": r * 0.05} for r in range(1, 20)],
+            "large_standard_deviation": [{"r": r * 0.05} for r in range(10)],
             "quantile": [{"q": q} for q in [.1, .2, .3, .4, .6, .7, .8, .9]],
             "autocorrelation": [{"lag": lag} for lag in range(10)],
-            "agg_autocorrelation": [{"f_agg": s, "maxlag": 40} for s in ["mean", "median", "var"]],
-            "partial_autocorrelation": [{"lag": lag} for lag in range(10)],
+            # @modified 20201230 - Branch #3908: v0.9.1
+            # Disabled agg_autocorrelation added in v0.9.0
+            # "agg_autocorrelation": [{"f_agg": s} for s in ["mean", "median", "var"]],
+            # @modified 20201231 - Branch #3908: v0.11.3
+			# Disabled Fix agg change made to agg_autocorrelation added in v0.11. 
+			# https://github.com/blue-yonder/tsfresh/commit/a53fb6a1735a6c837f53da50344fc4a1b793d664
+            # "agg_autocorrelation": [{"f_agg": s, "maxlag": 40} for s in ["mean", "median", "var"]],
+            # @modified 20201230 - Branch #3910: v0.10.2
+            # Disabled partial_autocorrelation added in v0.10.0
+            # "partial_autocorrelation": [{"lag": lag} for lag in range(10)],
             "number_cwt_peaks": [{"n": n} for n in [1, 5]],
-            "number_peaks": [{"n": n} for n in [1, 3, 5, 10, 50]],
+            # @modified 20201230 - Branch #3908: v0.9.1
+            # Revert to original number_peaks
+            # "number_peaks": [{"n": n} for n in [1, 3, 5, 10, 50]],
+            "number_peaks": [{"n": n} for n in [1, 3, 5]],
+            # @modified 20201230 - Branch #3908: v0.9.1
+            # Readded large_number_of_peaks
+            "large_number_of_peaks": [{"n": n} for n in [1, 3, 5]],
             "binned_entropy": [{"max_bins": max_bins} for max_bins in [10]],
             "index_mass_quantile": [{"q": q} for q in [.1, .2, .3, .4, .6, .7, .8, .9]],
             "cwt_coefficients": [{"widths": width, "coeff": coeff, "w": w} for
                                  width in [(2, 5, 10, 20)] for coeff in range(15) for w in (2, 5, 10, 20)],
             "spkt_welch_density": [{"coeff": coeff} for coeff in [2, 5, 8]],
             "ar_coefficient": [{"coeff": coeff, "k": k} for coeff in range(5) for k in [10]],
-            "change_quantiles": [{"ql": ql, "qh": qh, "isabs": b, "f_agg": f}
-                                 for ql in [0., .2, .4, .6, .8] for qh in [.2, .4, .6, .8, 1.]
-                                 for b in [False, True] for f in ["mean", "var"] if ql < qh],
-            "fft_coefficient": [{"coeff": k, "attr": a} for a, k in
-                                product(["real", "imag", "abs", "angle"], range(100))],
-            "fft_aggregated": [{"aggtype": s} for s in ["centroid", "variance", "skew", "kurtosis"]],
-            "value_count": [{"value": value} for value in [0, 1, -1]],
-            "range_count": [{"min": -1, "max": 1}, {"min": 1e12, "max": 0}, {"min": 0, "max": 1e12}],
+            # @modified 20201230 - Branch #3908: v0.9.1
+            # Revert to original mean_abs_change_quantiles
+            # "change_quantiles": [{"ql": ql, "qh": qh, "isabs": b, "f_agg": f}
+            #                               for ql in [0., .2, .4, .6, .8] for qh in [.2, .4, .6, .8, 1.]
+            #                               for b in [False, True] for f in ["mean", "var"]],
+            # @modified 20201231 - Branch #3916: v0.12.1
+			# Disabled new change_quantiles introduced in v0.12.0
+            # "change_quantiles": [{"ql": ql, "qh": qh, "isabs": b, "f_agg": f}
+            #                               for ql in [0., .2, .4, .6, .8] for qh in [.2, .4, .6, .8, 1.]
+            #                               for b in [False, True] for f in ["mean", "var"] if ql < qh],
+            "mean_abs_change_quantiles": [{"ql": ql, "qh": qh}
+                                          for ql in [0., .2, .4, .6, .8] for qh in [.2, .4, .6, .8, 1.]],
+            # @modified 20201230 - Branch #3908: v0.9.1
+            # Revert to original fft_coefficient
+            # "fft_coefficient": [{"coeff": k, "attr": a} for a, k in product(["real", "imag", "abs", "angle"], range(100))],
+            "fft_coefficient": [{"coeff": coeff} for coeff in range(0, 10)],
+            # @modified 20201231 - Branch #3908: v0.11.3
+			# Disabled fft_aggregated added in v0.11.0
+            # "fft_aggregated": [{"aggtype": s} for s in ["centroid", "variance", "skew", "kurtosis"]],
+            # @modified 20201231 - Branch #3908: v0.11.3
+			# Changed to new value_count and range_count method
+            # "value_count": [{"value": value} for value in [0, 1, -1]],
+            # "range_count": [{"min": -1, "max": 1}, {"min": 1e12, "max": 0}, {"min": 0, "max": 1e12}            
+            "value_count": [{"value": value} for value in [0, 1, np.NaN, np.PINF, np.NINF]],
+            "range_count": [{"min": -1, "max": 1}],
+            # @modified 20201231 - Branch #3908: v0.11.3
+			# Disabled to new value_count and range_count method added v0.13.0 use v0.11.1 version
+            # "value_count": [{"value": value} for value in [0, 1, -1]],
+            # "range_count": [{"min": -1, "max": 1}, {"min": 1e12, "max": 0}, {"min": 0, "max": 1e12}],
             "approximate_entropy": [{"m": 2, "r": r} for r in [.1, .3, .5, .7, .9]],
-            "friedrich_coefficients": (lambda m: [{"coeff": coeff, "m": m, "r": 30} for coeff in range(m + 1)])(3),
-            "max_langevin_fixed_point": [{"m": 3, "r": 30}],
-            "linear_trend": [{"attr": "pvalue"}, {"attr": "rvalue"}, {"attr": "intercept"},
-                             {"attr": "slope"}, {"attr": "stderr"}],
-            "agg_linear_trend": [{"attr": attr, "chunk_len": i, "f_agg": f}
-                                 for attr in ["rvalue", "intercept", "slope", "stderr"]
-                                 for i in [5, 10, 50]
-                                 for f in ["max", "min", "mean", "var"]],
-            "augmented_dickey_fuller": [{"attr": "teststat"}, {"attr": "pvalue"}, {"attr": "usedlag"}],
-            "number_crossing_m": [{"m": 0}, {"m": -1}, {"m": 1}],
-            "energy_ratio_by_chunks": [{"num_segments": 10, "segment_focus": i} for i in range(10)],
-            "ratio_beyond_r_sigma": [{"r": x} for x in [0.5, 1, 1.5, 2, 2.5, 3, 5, 6, 7, 10]],
-            "linear_trend_timewise": [{"attr": "pvalue"}, {"attr": "rvalue"}, {"attr": "intercept"},
-                                      {"attr": "slope"}, {"attr": "stderr"}],
-            "count_above": [{"t": 0}],
-            "count_below": [{"t": 0}]
-
+            # @modified 20201230 - Branch #3902: v0.6.1
+            # Disabled friedrich_coefficients and max_langevin_fixed_point
+            # introduced in v0.6.0
+            # "friedrich_coefficients": (lambda m: [{"coeff": coeff, "m": m, "r": 30} for coeff in range(m + 1)])(3),
+            # "max_langevin_fixed_point": [{"m": 3, "r": 30}],
+            # @modified 20201230 - Branch #3906: v0.8.2
+            # Disabled linear_trend and agg_linear_trend introduced in v0.8.1
+            # "linear_trend": [{"attr": "pvalue"}, {"attr": "rvalue"}, {"attr": "intercept"},
+            #                  {"attr": "slope"}, {"attr": "stderr"}],
+            # "agg_linear_trend": [{"attr": attr, "chunk_len": i, "f_agg": f}
+            #                      for attr in ["rvalue", "intercept", "slope", "stderr"]
+            #                      for i in [5, 10, 50]
+            #                      for f in ["max", "min", "mean", "var"]],
+            # @modified 20201230 - Branch #3908: v0.9.1
+            # Disabled augmented_dickey_fuller, number_crossing_m,
+            # energy_ratio_by_chunks and ratio_beyond_r_sigma added in v0.9.0
+            # "augmented_dickey_fuller": [{"attr": "teststat"}, {"attr": "pvalue"}, {"attr": "usedlag"}],
+            # "number_crossing_m": [{"m": 0}, {"m": -1}, {"m": 1}],
+            # "energy_ratio_by_chunks": [{"num_segments" : 10, "segment_focus": i} for i in range(10)],
+            # "ratio_beyond_r_sigma": [{"r": x} for x in [0.5, 1, 1.5, 2, 2.5, 3, 5, 6, 7, 10]],
+            # @modified 20201231 - Branch #3906: v0.12.1
+            # Disabled linear_trend_timewise introduced in v0.12.0
+            # "linear_trend_timewise": [{"attr": "pvalue"}, {"attr": "rvalue"}, {"attr": "intercept"},
+            #                  {"attr": "slope"}, {"attr": "stderr"}],
+			# @modified 20201231 - Branch #3920: v0.15.2
+			# Disabled count_above and count_below features that were added in v0.15.0
+            # "count_above": [{"t": 0}],
+            # "count_below": [{"t": 0}],
         })
 
         super().__init__(name_to_param)
