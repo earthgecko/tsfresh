@@ -234,6 +234,32 @@ def large_standard_deviation(x, r):
     return np.std(x) > (r * (np.max(x) - np.min(x)))
 
 
+# @added 20201230 - Branch #3908: v0.9.1
+@set_property("fctype", "combiner")
+def old_symmetry_looking(x, param):
+    """
+    Boolean variable denoting if the distribution of x *looks symmetric*. This is the case if
+
+    .. math::
+
+        | mean(X)-median(X)| < r * (max(X)-min(X))
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param r: the percentage of the range to compare with
+    :type r: float
+    :return: the value of this feature
+    :return type: bool
+    """
+    x = np.asarray(x)
+    mean_median_difference = abs(np.mean(x) - np.median(x))
+    max_min_difference = max(x) - min(x)
+    # return pd.Series({"{}__symmetry_looking__r_{}".format(c, r["r"]):
+    #                       mean_median_difference < (r["r"] * max_min_difference) for r in param})
+    return pd.Series({"value__symmetry_looking__r_{}".format(r["r"]):
+                        mean_median_difference < (r["r"] * max_min_difference) for r in param})
+
+
 @set_property("fctype", "combiner")
 def symmetry_looking(x, param):
     """
@@ -318,6 +344,54 @@ def sum_values(x):
         return 0
 
     return np.sum(x)
+
+
+# @added 20201230 - Branch #3908: v0.9.1
+# Readded large_number_of_peaks removed in v0.9.0
+@set_property("fctype", "simple")
+def large_number_of_peaks(x, n):
+    """
+    Checks if the number of peaks is higher than n.
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param n: the number of peaks to compare
+    :type n: int
+    :return: the value of this feature
+    :return type: bool
+    """
+    return number_peaks(x, n=n) > 5
+
+
+# @added 20201230 - Branch #3908: v0.9.1
+# Readded mean_autocorrelation removed in v0.9.0
+@set_property("fctype", "simple")
+def mean_autocorrelation(x):
+    """
+    Calculates the average autocorrelation (Compare to http://en.wikipedia.org/wiki/Autocorrelation#Estimation),
+    taken over different all possible lags (1 to length of x)
+
+    .. math::
+
+        \\frac{1}{n} \\sum_{l=1,\ldots, n} \\frac{1}{(n-l)\sigma^{2}} \\sum_{t=1}^{n-l}(X_{t}-\\mu )(X_{t+l}-\\mu)
+
+    where :math:`n` is the length of the time series :math:`X_i`, :math:`\sigma^2` its variance and :math:`\mu` its
+    mean.
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :return: the value of this feature
+    :return type: float
+    """
+    var = np.var(x)
+    n = len(x)
+
+    if abs(var) < 10**-10 or n == 1:
+        return 0
+    else:
+        r = np.correlate(x - np.mean(x), x - np.mean(x), mode='full')
+        r = r[0: (n - 1)] / np.arange(n - 1, 0, -1)
+        return np.nanmean(r / var)
 
 
 @set_property("fctype", "combiner")
@@ -418,8 +492,35 @@ def partial_autocorrelation(x, param):
     return [("lag_{}".format(lag["lag"]), pacf_coeffs[lag["lag"]]) for lag in param]
 
 
+# @added 20201230 - Branch #3908: v0.9.1
+# Reverted to original augmented_dickey_fuller that was changed in v0.9.0
+@set_property("fctype", "simple")
+def augmented_dickey_fuller(x):
+    """
+    The Augmented Dickey-Fuller test is a hypothesis test which checks whether a unit root is present in a time
+    series sample. This feature calculator returns the value of the respective test statistic.
+
+    See the statsmodels implementation for references and more details.
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :return: the value of this feature
+    :return type: float
+    """
+
+    try:
+        return adfuller(x)[0]
+    except LinAlgError:
+        return np.NaN
+    except ValueError:  # occurs if sample size is too small
+        return np.NaN
+
+
 @set_property("fctype", "combiner")
-def augmented_dickey_fuller(x, param):
+# @modified 20201230 - Branch #3908: v0.9.1
+# Reverted to original augmented_dickey_fuller that was changed in v0.9.0
+# def augmented_dickey_fuller(x, param):
+def v090_augmented_dickey_fuller(x, param):
     """
     The Augmented Dickey-Fuller test is a hypothesis test which checks whether a unit root is present in a time
     series sample. This feature calculator returns the value of the respective test statistic.
@@ -558,7 +659,10 @@ def mean_change(x):
 
 
 @set_property("fctype", "simple")
-def mean_second_derivative_central(x):
+# @modified 20201231 - Branch #3912: v0.11.3
+# Revert to original feature name which was changed in v0.11.0
+# def mean_second_derivative_central(x):
+def mean_second_derivate_central(x):
     """
     Returns the mean value of a central approximation of the second derivative
 
@@ -886,26 +990,39 @@ def sum_of_reoccurring_values(x):
     :return: the value of this feature
     :return type: float
     """
-    unique, counts = np.unique(x, return_counts=True)
-    counts[counts < 2] = 0
-    counts[counts > 1] = 1
-    return np.sum(counts * unique)
+    # @modified 20201230 - Branch #3900: v0.5.1
+    # Revert to the original sum_of_reoccurring_values v0.4.0 method which was
+    # changed and the new feature called sum_of_reoccurring_data_points was
+    # added which results in the same value as the original v0.4.0
+    # sum_of_reoccurring_values method. The new sum_of_reoccurring_values method
+    # introduced results in different results as per:
+    # NOT in baseline   :: [['value__sum_of_reoccurring_values', '49922.0']]
+    # NOT in calculated :: [['value__sum_of_reoccurring_values', '109822.0']]
+    # unique, counts = np.unique(x, return_counts=True)
+    # counts[counts < 2] = 0
+    # counts[counts > 1] = 1
+    # return np.sum(counts * unique)
+    x = pd.Series(x)
+    value_counts = x.value_counts()
+    doubled_values = value_counts[value_counts > 1]
+    return sum(doubled_values.index * doubled_values)
 
-
-@set_property("fctype", "simple")
-def sum_of_reoccurring_data_points(x):
-    """
-    Returns the sum of all data points, that are present in the time series
-    more than once.
-
-    :param x: the time series to calculate the feature of
-    :type x: numpy.ndarray
-    :return: the value of this feature
-    :return type: float
-    """
-    unique, counts = np.unique(x, return_counts=True)
-    counts[counts < 2] = 0
-    return np.sum(counts * unique)
+# @modified 20201230 - Branch #3900: v0.5.1
+# Disable sum_of_reoccurring_data_points feature
+# @set_property("fctype", "simple")
+# def sum_of_reoccurring_data_points(x):
+#    """
+#    Returns the sum of all data points, that are present in the time series
+#    more than once.
+#
+#    :param x: the time series to calculate the feature of
+#    :type x: numpy.ndarray
+#    :return: the value of this feature
+#    :return type: float
+#    """
+#    unique, counts = np.unique(x, return_counts=True)
+#    counts[counts < 2] = 0
+#    return np.sum(counts * unique)
 
 
 @set_property("fctype", "simple")
@@ -930,8 +1047,74 @@ def ratio_value_number_to_time_series_length(x):
     return np.unique(x).size / x.size
 
 
+# @added 20201230 - Branch #3908: v0.9.1
+@set_property("fctype", "combiner")
+def original_pre_v090_fft_coefficient(x, c, param):
+    """
+    Calculates the fourier coefficients of the one-dimensional discrete Fourier Transform for real input by fast
+    fourier transformation algorithm
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param c: the time series name
+    :type c: str
+    :param param: contains dictionaries {"coeff": x} with x int and x >= 0
+    :type param: list
+    :return: the different feature values
+    :return type: pandas.Series
+    """
+
+    coefficients = set([config["coeff"] for config in param])
+    for coeff in coefficients:
+        if coeff < 0:
+            raise ValueError("Coefficients must be positive or zero.")
+
+    maximum_coefficient = max(max(coefficients), 1)
+    fft = np.fft.rfft(x, min(len(x), 2 * maximum_coefficient))
+
+    res = [fft[q] if q < len(fft) else 0 for q in coefficients]
+    res = [r.real if isinstance(r, complex) else r for r in res]
+    return pd.Series(res, index=["{}__fft_coefficient__coeff_{}".format(c, q) for q in coefficients])
+
+
+
+
 @set_property("fctype", "combiner")
 def fft_coefficient(x, param):
+    """
+    Calculates the fourier coefficients of the one-dimensional discrete Fourier Transform for real input by fast
+    fourier transformation algorithm
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param c: the time series name
+    :type c: str
+    :param param: contains dictionaries {"coeff": x} with x int and x >= 0
+    :type param: list
+    :return: the different feature values
+    :return type: zip
+    """
+
+    coefficients = set([config["coeff"] for config in param])
+    for coeff in coefficients:
+        if coeff < 0:
+            raise ValueError("Coefficients must be positive or zero.")
+
+    maximum_coefficient = max(max(coefficients), 1)
+    fft = np.fft.rfft(x, min(len(x), 2 * maximum_coefficient))
+
+    res = [fft[q] if q < len(fft) else 0 for q in coefficients]
+    res = [r.real if isinstance(r, complex) else r for r in res]
+    # return pd.Series(res, index=["__fft_coefficient__coeff_{}".format(q) for q in coefficients])
+    index = ["coeff_{}".format(q) for q in coefficients]
+    return zip(index, res)
+
+
+@set_property("fctype", "combiner")
+# @modified 20201230 - Branch #3908: v0.9.1
+# Reverted to original fft_coefficient that was changed in v0.9.0
+# def fft_coefficient(x, param):
+def v090_fft_coefficient(x, param):
     """
     Calculates the fourier coefficients of the one-dimensional discrete Fourier Transform for real input by fast
     fourier transformation algorithm
@@ -1324,6 +1507,45 @@ def ar_coefficient(x, param):
     return [(key, value) for key, value in res.items()]
 
 
+# @added 20201230 - Branch #3908: v0.9.1
+# Readded mean_abs_change_quantiles that was removed in v0.9.0
+@set_property("fctype", "simple")
+def mean_abs_change_quantiles(x, ql, qh):
+    """
+    First fixes a corridor given by the quantiles ql and qh of the distribution of x. Then calculates the average
+    absolute value of consecutive changes of the series x inside this corridor. Think about selecting a corridor on the
+    y-Axis and only calculating the mean of the absolute change of the time series inside this corridor.
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param ql: the lower quantile of the corridor
+    :type ql: float
+    :param qh: the higher quantile of the corridor
+    :type qh: float
+    :return: the value of this feature
+    :return type: float
+    """
+    x = np.asarray(x)
+
+    if ql >= qh:
+        ValueError("ql={} should be lower than qh={}".format(ql, qh))
+    div = np.abs(np.diff(x))
+    # All values that originate from the corridor between the quantiles ql and qh will have the category 0,
+    # other will be np.NaN
+    try:
+        bin_cat = pd.qcut(x, [ql, qh], labels=False)
+        bin_cat_0 = bin_cat == 0
+    except ValueError:  # Occurs when ql are qh effectively equal, e.g. x is not long enough or is too categorical
+        return 0
+    # We only count changes that start and end inside the corridor
+    ind = (bin_cat_0 * np.roll(bin_cat_0, 1))[1:]
+    if sum(ind) == 0:
+        return 0
+    else:
+        ind_inside_corridor = np.where(ind == 1)
+        return np.mean(div[ind_inside_corridor])
+
+
 @set_property("fctype", "simple")
 def change_quantiles(x, ql, qh, isabs, f_agg):
     """
@@ -1370,6 +1592,10 @@ def change_quantiles(x, ql, qh, isabs, f_agg):
         return aggregator(div[ind_inside_corridor])
 
 
+
+# @added 20201230 - Branch #3908: v0.9.1
+# Readded the original time_reversal_asymmetry_statistic that was in use
+# pre v0.9.0 - https://github.com/blue-yonder/tsfresh/issues/198
 @set_property("fctype", "simple")
 def time_reversal_asymmetry_statistic(x, lag):
     """
@@ -1377,13 +1603,60 @@ def time_reversal_asymmetry_statistic(x, lag):
 
     .. math::
 
-        \\frac{1}{n-2lag} \\sum_{i=1}^{n-2lag} x_{i + 2 \\cdot lag}^2 \\cdot x_{i + lag} - x_{i + lag} \\cdot  x_{i}^2
+        \\frac{1}{n-2lag} \sum_{i=0}^{n-2lag} x_{i + 2 \cdot lag}^2 \cdot x_{i + lag} - x_{i + lag} \cdot  x_{i}^2
 
     which is
 
     .. math::
 
-        \\mathbb{E}[L^2(X)^2 \\cdot L(X) - L(X) \\cdot X^2]
+        \\mathbb{E}[L^2(X)^2 \cdot L(X) - L(X) \cdot X^2]
+
+    where :math:`\\mathbb{E}` is the mean and :math:`L` is the lag operator. It was proposed in [1] as a
+    promising feature to extract from time series.
+
+    References
+    ----------
+
+    .. [1] Fulcher, B.D., Jones, N.S. (2014).
+       Highly comparative feature-based time-series classification.
+       Knowledge and Data Engineering, IEEE Transactions on 26, 3026–3037.
+
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param lag: the lag that should be used in the calculation of the feature
+    :type lag: int
+    :return: the value of this feature
+    :return type: float
+    """
+    n = len(x)
+    x = np.asarray(x)
+    if 2 * lag > n:
+        return 0
+    elif 2 * lag == n:
+        return x[n - 1] * x[n - 1] * x[0] - x[lag - 1] * x[0] * x[0]
+    else:
+        return np.mean((np.roll(x, 2 * -lag) * np.roll(x, 2 * -lag) * x - np.roll(x, -lag) * x * x)[0:(n - 2 * lag)])
+
+
+@set_property("fctype", "simple")
+# @modified 20201230 - Branch #3908: v0.9.1
+# Reverted to the original time_reversal_asymmetry_statistic that was in use
+# pre v0.9.0 - https://github.com/blue-yonder/tsfresh/issues/198
+# def time_reversal_asymmetry_statistic(x, lag):
+def v090_time_reversal_asymmetry_statistic(x, lag):
+    """
+    This function calculates the value of
+
+    .. math::
+
+        \\frac{1}{n-2lag} \sum_{i=0}^{n-2lag} x_{i + 2 \cdot lag}^2 \cdot x_{i + lag} - x_{i + lag} \cdot  x_{i}^2
+
+    which is
+
+    .. math::
+
+        \\mathbb{E}[L^2(X)^2 \cdot L(X) - L(X) \cdot X^2]
 
     where :math:`\\mathbb{E}` is the mean and :math:`L` is the lag operator. It was proposed in [1] as a
     promising feature to extract from time series.
@@ -1535,8 +1808,29 @@ def sample_entropy(x):
     return se[0]
 
 
+# @added 20201230 - Branch #3908: v0.9.1
+# Readded original autocorrelation that was removed in v0.9.0
 @set_property("fctype", "simple")
 def autocorrelation(x, lag):
+    """
+    Calculates the lag autocorrelation of a lag value of lag.
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param lag: the lag
+    :type lag: int
+    :return: the value of this feature
+    :return type: float
+    """
+    x = pd.Series(x)
+    return pd.Series.autocorr(x, lag)
+
+
+@set_property("fctype", "simple")
+# @modified 20201230 - Branch #3908: v0.9.1
+# Reverted to the original autocorrelation that was changed in v0.9.0
+# def autocorrelation(x, lag):
+def v090_autocorrelation(x, lag):
     """
     Calculates the autocorrelation of the specified lag, according to the formula [1]
 
@@ -1653,6 +1947,23 @@ def value_count(x, value):
     Count occurrences of `value` in time series x.
 
     :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param value: the value to be counted
+    :type value: int or float
+    :return: the count
+    :rtype: int
+    """
+    if np.isnan(value):
+        return np.isnan(x).sum()
+    else:
+        return x[x == value].shape[0]
+
+@set_property("fctype", "simple")
+def v0110_value_count(x, value):
+    """
+    Count occurrences of `value` in time series x.
+
+    :param x: the time series to calculate the feature of
     :type x: numpy.ndarray
     :param value: the value to be counted
     :type value: int or float
@@ -1670,6 +1981,22 @@ def value_count(x, value):
 
 @set_property("fctype", "simple")
 def range_count(x, min, max):
+    """
+    Count observed values within the interval [min, max).
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param min: the inclusive lower bound of the range
+    :type min: int or float
+    :param max: the exclusive upper bound of the range
+    :type max: int or float
+    :return: the count of values within the range
+    :rtype: int
+    """
+    return np.sum((x >= min) & (x < max))
+
+@set_property("fctype", "simple")
+def v0110_range_count(x, min, max):
     """
     Count observed values within the interval [min, max).
 
