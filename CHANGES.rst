@@ -4,6 +4,11 @@ Changelog
 
 tsfresh uses `Semantic Versioning <http://semver.org/>`_
 
+Version 0.5.1
+=============
+
+- Disabled new feature and feature renaming: sum_of_recurring_values, sum_of_recurring_data_points
+
 Version 0.5.0
 =============
 

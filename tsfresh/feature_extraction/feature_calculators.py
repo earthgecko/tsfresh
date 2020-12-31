@@ -661,27 +661,40 @@ def sum_of_reoccurring_values(x):
     :return: the value of this feature
     :return type: float
     """
-    unique, counts = np.unique(x, return_counts=True)
-    counts[counts < 2] = 0
-    counts[counts > 1] = 1
-    return np.sum(counts * unique)
+    # @modified 20201230 - Branch #3900: v0.5.1
+    # Revert to the original sum_of_reoccurring_values v0.4.0 method which was
+    # changed and the new feature called sum_of_reoccurring_data_points was
+    # added which results in the same value as the original v0.4.0
+    # sum_of_reoccurring_values method. The new sum_of_reoccurring_values method
+    # introduced results in different results as per:
+    # NOT in baseline   :: [['value__sum_of_reoccurring_values', '49922.0']]
+    # NOT in calculated :: [['value__sum_of_reoccurring_values', '109822.0']]
+    # unique, counts = np.unique(x, return_counts=True)
+    # counts[counts < 2] = 0
+    # counts[counts > 1] = 1
+    # return np.sum(counts * unique)
+    x = pd.Series(x)
+    value_counts = x.value_counts()
+    doubled_values = value_counts[value_counts > 1]
+    return sum(doubled_values.index * doubled_values)
 
-
-@set_property("fctype", "aggregate")
-@not_apply_to_raw_numbers
-def sum_of_reoccurring_data_points(x):
-    """
-    Returns the sum of all data points, that are present in the time series
-    more than once.
-
-    :param x: the time series to calculate the feature of
-    :type x: pandas.Series
-    :return: the value of this feature
-    :return type: float
-    """
-    unique, counts = np.unique(x, return_counts=True)
-    counts[counts < 2] = 0
-    return np.sum(counts * unique)
+# @modified 20201230 - Branch #3900: v0.5.1
+# Disable sum_of_reoccurring_data_points feature
+# @set_property("fctype", "aggregate")
+# @not_apply_to_raw_numbers
+# def sum_of_reoccurring_data_points(x):
+#    """
+#    Returns the sum of all data points, that are present in the time series
+#    more than once.
+#
+#    :param x: the time series to calculate the feature of
+#    :type x: pandas.Series
+#    :return: the value of this feature
+#    :return type: float
+#    """
+#    unique, counts = np.unique(x, return_counts=True)
+#    counts[counts < 2] = 0
+#    return np.sum(counts * unique)
 
 
 @set_property("fctype", "aggregate")
@@ -1082,16 +1095,16 @@ def sample_entropy(x):
     ----------
     [1] http://en.wikipedia.org/wiki/Sample_Entropy
     [2] https://www.ncbi.nlm.nih.gov/pubmed/10843903?dopt=Abstract
-    
+
     :param x: the time series to calculate the feature of
     :type x: pandas.Series
     :param tolerance: normalization factor; equivalent to the common practice of expressing the tolerance as r times the standard deviation
     :type tolerance: float
     :return: the value of this feature
     :return type: float
-    """ 
+    """
     x = np.array(x)
-    
+
     sample_length = 1 # number of sequential points of the time series
     tolerance = 0.2 * np.std(x) # 0.2 is a common value for r - why?
 
@@ -1117,16 +1130,16 @@ def sample_entropy(x):
                 curr[jj] = 0
         for j in range(nj):
             prev[j] = curr[j]
-            
+
     N = n * (n - 1) / 2
     B = np.vstack(([N], B[0]))
-    
+
     # sample entropy = -1 * (log (A/B))
-    similarity_ratio = A / B 
+    similarity_ratio = A / B
     se = -1 * np.log(similarity_ratio)
     se = np.reshape(se, -1)
     return se[0]
-    
+
 
 
 @set_property("fctype", "aggregate_with_parameters")
@@ -1239,7 +1252,7 @@ def approximate_entropy(x, m, r):
     For short time-series this method is highly dependent on the parameters,
     but should be stable for N > 2000, see:
 
-        Yentes et al. (2012) - 
+        Yentes et al. (2012) -
         *The Appropriate Use of Approximate Entropy and Sample Entropy with Short Data Sets*
 
 

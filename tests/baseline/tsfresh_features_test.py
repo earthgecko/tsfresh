@@ -45,6 +45,10 @@ if 'dirty' in TSFRESH_BASELINE_VERSION:
     # remove "dirty" part of version tag, for example 0.4.0+ng7e4c397.dirty becomes 0.4.0
     TSFRESH_BASELINE_VERSION = TSFRESH_BASELINE_VERSION.rsplit('+', 1)[0]
 
+# @added 20201230 - Branch #3900: v0.5.1
+# Directly declared every version hardcoded
+TSFRESH_BASELINE_VERSION = '0.5.1'
+
 # IO stuff, getting directories to read and to write
 baseline_dir = os.path.dirname(os.path.realpath(__file__))
 tests_dir = os.path.dirname(baseline_dir)
