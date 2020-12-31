@@ -4,6 +4,31 @@ Changelog
 
 tsfresh uses `Semantic Versioning <http://semver.org/>`_
 
+Version 0.17.9
+==============
+
+- Readded the original percentage_of_reoccurring_datapoints_to_all_datapoints
+  before the feature name change to percentage_of_reoccurring_values_to_all_values
+  implemented in v0.17.0 (feature names should be immutable)
+  https://github.com/blue-yonder/tsfresh/pull/725
+  https://github.com/blue-yonder/tsfresh/commit/6f9c7950d92ca84c9a4a44829d3aef283715a361
+  https://github.com/blue-yonder/tsfresh/issues/724
+- Rename the new feature percentage_of_reoccurring_values_to_all_values to
+  v0170_percentage_of_reoccurring_values_to_all_values and disabled
+- Readded the original percentage_of_reoccurring_values_to_all_values
+  before the feature name change to percentage_of_reoccurring_datapoints_to_all_datapoints
+  implemented in v0.17.0 (feature names should be immutable)
+- Rename the new feature percentage_of_reoccurring_datapoints_to_all_datapoints
+  to v0170_percentage_of_reoccurring_datapoints_to_all_datapoints and disabled
+- Disabled lempel_ziv_complexity,fourier_entropy and permutation_entropy
+  features that were added in v0.17.0
+- Revert to the original cwt_coefficients feature names changed in v0.16.0
+- Renamed the new sample_entropy introduced in v0.16.0 to v0160_sample_entropy
+  and readded sample_entropy from v0.15.1 as this is a breaking change as per:
+  https://github.com/blue-yonder/tsfresh/pull/681 and
+  https://github.com/blue-yonder/tsfresh/pull/681/commits/ce493e5735bea79424f8bb357a4e357caebdb369
+- Hardcoded TSFRESH_BASELINE_VERSION = '0.17.9' in tests
+
 Version 0.17.0
 ==============
 
@@ -35,6 +60,12 @@ We changed the default branch from "master" to "main".
     - Fix for newer, more strict pandas versions (#737)
     - Fix documentation for feature calculators (#743)
 
+Version 0.16.1
+==============
+
+- Disabled count_above and count_below features that were added in v0.15.0
+- Merged previous v0.15.2 changes
+
 Version 0.16.0
 ==============
 
@@ -63,6 +94,11 @@ Version 0.16.0
       But your results will change!
 
 
+Version 0.15.2
+==============
+
+- Disabled new features count_above and count_below
+
 Version 0.15.1
 ==============
 
@@ -80,6 +116,11 @@ Version 0.15.0
     - Skip dask test for older python versions (#649)
     - Add missing distributor keyword (#648)
     - Fix tuple input for cwt (#645)
+
+Version 0.14.1 (2)
+==============
+
+- Merged 0.14.0 changes
 
 Version 0.14.1
 ==============
@@ -106,6 +147,10 @@ Version 0.14.0
     - Replace Benjamini-Hochberg implementation with statsmodels implementation (#570)
     - Fix the kernel and the naming of a notebook (#626)
 
+Version 0.13.1
+==============
+
+- Reverted to the v0.11.1 value_count setting
 
 Version 0.13.0
 ==============
@@ -133,6 +178,11 @@ Version 0.13.0
     - Improve performance with Numpy's sum function (#567)
     - Optimize mean_change (fixes issue #542) and correct documentation (#574)
 
+Version 0.12.1
+==============
+
+- Disabled linear_trend_timewise added in v0.12.0
+- Readded tsfresh/examples/test_tsfresh_baseline_dataset.py which was removed in v0.12.0
 
 Version 0.12.0
 ==============
@@ -148,6 +198,12 @@ Version 0.12.0
 - enable the RelevantFeatureAugmenter to be used in cross validated pipelines
 - increased scipy dependency to 1.2.0
 
+Version 0.11.3
+==============
+- Disabled new feature calculators:
+    - fft_aggregated
+    - cid_ce
+- reverted to the original mean_second_derivate_central from mean_second_derivative_central
 
 Version 0.11.2
 ==============

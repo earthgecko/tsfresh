@@ -270,6 +270,32 @@ def large_standard_deviation(x, r):
     return np.std(x) > (r * (np.max(x) - np.min(x)))
 
 
+# @added 20201230 - Branch #3908: v0.9.1
+@set_property("fctype", "combiner")
+def old_symmetry_looking(x, param):
+    """
+    Boolean variable denoting if the distribution of x *looks symmetric*. This is the case if
+
+    .. math::
+
+        | mean(X)-median(X)| < r * (max(X)-min(X))
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param r: the percentage of the range to compare with
+    :type r: float
+    :return: the value of this feature
+    :return type: bool
+    """
+    x = np.asarray(x)
+    mean_median_difference = abs(np.mean(x) - np.median(x))
+    max_min_difference = max(x) - min(x)
+    # return pd.Series({"{}__symmetry_looking__r_{}".format(c, r["r"]):
+    #                       mean_median_difference < (r["r"] * max_min_difference) for r in param})
+    return pd.Series({"value__symmetry_looking__r_{}".format(r["r"]):
+                        mean_median_difference < (r["r"] * max_min_difference) for r in param})
+
+
 @set_property("fctype", "combiner")
 def symmetry_looking(x, param):
     """
@@ -354,6 +380,54 @@ def sum_values(x):
         return 0
 
     return np.sum(x)
+
+
+# @added 20201230 - Branch #3908: v0.9.1
+# Readded large_number_of_peaks removed in v0.9.0
+@set_property("fctype", "simple")
+def large_number_of_peaks(x, n):
+    """
+    Checks if the number of peaks is higher than n.
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param n: the number of peaks to compare
+    :type n: int
+    :return: the value of this feature
+    :return type: bool
+    """
+    return number_peaks(x, n=n) > 5
+
+
+# @added 20201230 - Branch #3908: v0.9.1
+# Readded mean_autocorrelation removed in v0.9.0
+@set_property("fctype", "simple")
+def mean_autocorrelation(x):
+    """
+    Calculates the average autocorrelation (Compare to http://en.wikipedia.org/wiki/Autocorrelation#Estimation),
+    taken over different all possible lags (1 to length of x)
+
+    .. math::
+
+        \\frac{1}{n} \\sum_{l=1,\ldots, n} \\frac{1}{(n-l)\sigma^{2}} \\sum_{t=1}^{n-l}(X_{t}-\\mu )(X_{t+l}-\\mu)
+
+    where :math:`n` is the length of the time series :math:`X_i`, :math:`\sigma^2` its variance and :math:`\mu` its
+    mean.
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :return: the value of this feature
+    :return type: float
+    """
+    var = np.var(x)
+    n = len(x)
+
+    if abs(var) < 10**-10 or n == 1:
+        return 0
+    else:
+        r = np.correlate(x - np.mean(x), x - np.mean(x), mode='full')
+        r = r[0: (n - 1)] / np.arange(n - 1, 0, -1)
+        return np.nanmean(r / var)
 
 
 @set_property("fctype", "combiner")
@@ -459,8 +533,35 @@ def partial_autocorrelation(x, param):
     return [("lag_{}".format(lag["lag"]), pacf_coeffs[lag["lag"]]) for lag in param]
 
 
+# @added 20201230 - Branch #3908: v0.9.1
+# Reverted to original augmented_dickey_fuller that was changed in v0.9.0
+@set_property("fctype", "simple")
+def augmented_dickey_fuller(x):
+    """
+    The Augmented Dickey-Fuller test is a hypothesis test which checks whether a unit root is present in a time
+    series sample. This feature calculator returns the value of the respective test statistic.
+
+    See the statsmodels implementation for references and more details.
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :return: the value of this feature
+    :return type: float
+    """
+
+    try:
+        return adfuller(x)[0]
+    except LinAlgError:
+        return np.NaN
+    except ValueError:  # occurs if sample size is too small
+        return np.NaN
+
+
 @set_property("fctype", "combiner")
-def augmented_dickey_fuller(x, param):
+# @modified 20201230 - Branch #3908: v0.9.1
+# Reverted to original augmented_dickey_fuller that was changed in v0.9.0
+# def augmented_dickey_fuller(x, param):
+def v090_augmented_dickey_fuller(x, param):
     """
     The Augmented Dickey-Fuller test is a hypothesis test which checks whether a unit root is present in a time
     series sample. This feature calculator returns the value of the respective test statistic.
@@ -599,7 +700,10 @@ def mean_change(x):
 
 
 @set_property("fctype", "simple")
-def mean_second_derivative_central(x):
+# @modified 20201231 - Branch #3912: v0.11.3
+# Revert to original feature name which was changed in v0.11.0
+# def mean_second_derivative_central(x):
+def mean_second_derivate_central(x):
     """
     Returns the mean value of a central approximation of the second derivative
 
@@ -671,22 +775,23 @@ def standard_deviation(x):
     """
     return np.std(x)
 
-
-@set_property("fctype", "simple")
-def variation_coefficient(x):
-    """
-    Returns the variation coefficient (standard error / mean, give relative value of variation around mean) of x.
-
-    :param x: the time series to calculate the feature of
-    :type x: numpy.ndarray
-    :return: the value of this feature
-    :return type: float
-    """
-    mean = np.mean(x)
-    if mean != 0:
-        return np.std(x) / mean
-    else:
-        return np.nan
+# @modified 20201231 - Branch #3924: v0.17.9
+# Disabled variation_coefficient added in v0.16.0 and v0.17.0
+# @set_property("fctype", "simple")
+# def variation_coefficient(x):
+#     """
+#     Returns the variation coefficient (standard error / mean, give relative value of variation around mean) of x.
+#
+#     :param x: the time series to calculate the feature of
+#     :type x: numpy.ndarray
+#     :return: the value of this feature
+#     :return type: float
+#     """
+#     mean = np.mean(x)
+#     if mean != 0:
+#         return np.std(x) / mean
+#     else:
+#         return np.nan
 
 
 @set_property("fctype", "simple")
@@ -874,16 +979,23 @@ def first_location_of_minimum(x):
     return np.argmin(x) / len(x) if len(x) > 0 else np.NaN
 
 
+# @added 20201231 - Branch #3924: v0.17.9
+# Readded the original percentage_of_reoccurring_datapoints_to_all_datapoints
+# before the feature name change to percentage_of_reoccurring_values_to_all_values
+# implemented in v0.17.0
+# https://github.com/blue-yonder/tsfresh/pull/725
+# https://github.com/blue-yonder/tsfresh/commit/6f9c7950d92ca84c9a4a44829d3aef283715a361
+# https://github.com/blue-yonder/tsfresh/issues/724
 @set_property("fctype", "simple")
-def percentage_of_reoccurring_values_to_all_values(x):
+def percentage_of_reoccurring_datapoints_to_all_datapoints(x):
     """
-    Returns the percentage of values that are present in the time series
+    Returns the percentage of unique values, that are present in the time series
     more than once.
 
         len(different values occurring more than once) / len(different values)
 
     This means the percentage is normalized to the number of unique values,
-    in contrast to the percentage_of_reoccurring_datapoints_to_all_datapoints.
+    in contrast to the percentage_of_reoccurring_values_to_all_values.
 
     :param x: the time series to calculate the feature of
     :type x: numpy.ndarray
@@ -902,27 +1014,64 @@ def percentage_of_reoccurring_values_to_all_values(x):
 
 
 @set_property("fctype", "simple")
+# @modified 20201231 - Branch #3924: v0.17.9
+# Rename and disabled the new feature
+# def percentage_of_reoccurring_values_to_all_values(x):
+# def v0170_percentage_of_reoccurring_values_to_all_values(x):
+#    """
+#    Returns the percentage of values that are present in the time series
+#     more than once.
+#
+#         len(different values occurring more than once) / len(different values)
+#
+#     This means the percentage is normalized to the number of unique values,
+#     in contrast to the percentage_of_reoccurring_datapoints_to_all_datapoints.
+#
+#     :param x: the time series to calculate the feature of
+#     :type x: numpy.ndarray
+#     :return: the value of this feature
+#     :return type: float
+#     """
+#     if len(x) == 0:
+#         return np.nan
+#
+#     unique, counts = np.unique(x, return_counts=True)
+#
+#     if counts.shape[0] == 0:
+#         return 0
+#
+#     return np.sum(counts > 1) / float(counts.shape[0])
+
+
+# @added 20201231 - Branch #3924: v0.17.9
+# Readded the original percentage_of_reoccurring_values_to_all_values
+# before the feature name change to percentage_of_reoccurring_datapoints_to_all_datapoints
+# implemented in v0.17.0
+# https://github.com/blue-yonder/tsfresh/pull/725
+# https://github.com/blue-yonder/tsfresh/commit/6f9c7950d92ca84c9a4a44829d3aef283715a361
+# https://github.com/blue-yonder/tsfresh/issues/724
+@set_property("fctype", "simple")
 @set_property("input", "pd.Series")
-def percentage_of_reoccurring_datapoints_to_all_datapoints(x):
+def percentage_of_reoccurring_values_to_all_values(x):
     """
-    Returns the percentage of non-unique data points. Non-unique means that they are
-    contained another time in the time series again.
+    Returns the ratio of unique values, that are present in the time series
+    more than once.
 
         # of data points occurring more than once / # of all data points
 
     This means the ratio is normalized to the number of data points in the time series,
-    in contrast to the percentage_of_reoccurring_values_to_all_values.
+    in contrast to the percentage_of_reoccurring_datapoints_to_all_datapoints.
 
     :param x: the time series to calculate the feature of
     :type x: numpy.ndarray
     :return: the value of this feature
     :return type: float
     """
-    if len(x) == 0:
-        return np.nan
-
     if not isinstance(x, pd.Series):
         x = pd.Series(x)
+
+    if x.size == 0:
+        return np.nan
 
     value_counts = x.value_counts()
     reoccuring_values = value_counts[value_counts > 1].sum()
@@ -931,6 +1080,41 @@ def percentage_of_reoccurring_datapoints_to_all_datapoints(x):
         return 0
 
     return reoccuring_values / x.size
+
+
+@set_property("fctype", "simple")
+@set_property("input", "pd.Series")
+# @modified 20201231 - Branch #3924: v0.17.9
+# Rename and disabled the new feature
+# def percentage_of_reoccurring_datapoints_to_all_datapoints(x):
+# def v0170_percentage_of_reoccurring_datapoints_to_all_datapoints(x):
+#     """
+#     Returns the percentage of non-unique data points. Non-unique means that they are
+#     contained another time in the time series again.
+#
+#         # of data points occurring more than once / # of all data points
+#
+#     This means the ratio is normalized to the number of data points in the time series,
+#     in contrast to the percentage_of_reoccurring_values_to_all_values.
+#
+#     :param x: the time series to calculate the feature of
+#     :type x: numpy.ndarray
+#     :return: the value of this feature
+#     :return type: float
+#     """
+#     if len(x) == 0:
+#         return np.nan
+#
+#     if not isinstance(x, pd.Series):
+#         x = pd.Series(x)
+#
+#     value_counts = x.value_counts()
+#     reoccuring_values = value_counts[value_counts > 1].sum()
+#
+#     if np.isnan(reoccuring_values):
+#         return 0
+#
+#     return reoccuring_values / x.size
 
 
 @set_property("fctype", "simple")
@@ -955,35 +1139,49 @@ def sum_of_reoccurring_values(x):
     :return: the value of this feature
     :return type: float
     """
-    unique, counts = np.unique(x, return_counts=True)
-    counts[counts < 2] = 0
-    counts[counts > 1] = 1
-    return np.sum(counts * unique)
+    # @modified 20201230 - Branch #3900: v0.5.1
+    # Revert to the original sum_of_reoccurring_values v0.4.0 method which was
+    # changed and the new feature called sum_of_reoccurring_data_points was
+    # added which results in the same value as the original v0.4.0
+    # sum_of_reoccurring_values method. The new sum_of_reoccurring_values method
+    # introduced results in different results as per:
+    # NOT in baseline   :: [['value__sum_of_reoccurring_values', '49922.0']]
+    # NOT in calculated :: [['value__sum_of_reoccurring_values', '109822.0']]
+    # unique, counts = np.unique(x, return_counts=True)
+    # counts[counts < 2] = 0
+    # counts[counts > 1] = 1
+    # return np.sum(counts * unique)
+    x = pd.Series(x)
+    value_counts = x.value_counts()
+    doubled_values = value_counts[value_counts > 1]
+    return sum(doubled_values.index * doubled_values)
 
 
-@set_property("fctype", "simple")
-def sum_of_reoccurring_data_points(x):
-    """
-    Returns the sum of all data points, that are present in the time series
-    more than once.
-
-    For example
-
-        sum_of_reoccurring_data_points([2, 2, 2, 2, 1]) = 8
-
-    as 2 is a reoccurring value, so all 2's are summed up.
-
-    This is in contrast to ``sum_of_reoccurring_values``,
-    where each reoccuring value is only counted once.
-
-    :param x: the time series to calculate the feature of
-    :type x: numpy.ndarray
-    :return: the value of this feature
-    :return type: float
-    """
-    unique, counts = np.unique(x, return_counts=True)
-    counts[counts < 2] = 0
-    return np.sum(counts * unique)
+# @modified 20201230 - Branch #3900: v0.5.1
+# Disable sum_of_reoccurring_data_points feature
+# @set_property("fctype", "simple")
+# def sum_of_reoccurring_data_points(x):
+#    """
+#    Returns the sum of all data points, that are present in the time series
+#    more than once.
+#
+#    For example
+#
+#        sum_of_reoccurring_data_points([2, 2, 2, 2, 1]) = 8
+#
+#    as 2 is a reoccurring value, so all 2's are summed up.
+#
+#    This is in contrast to ``sum_of_reoccurring_values``,
+#    where each reoccuring value is only counted once.
+#
+#    :param x: the time series to calculate the feature of
+#    :type x: numpy.ndarray
+#    :return: the value of this feature
+#    :return type: float
+#    """
+#    unique, counts = np.unique(x, return_counts=True)
+#    counts[counts < 2] = 0
+#    return np.sum(counts * unique)
 
 
 @set_property("fctype", "simple")
@@ -1008,8 +1206,74 @@ def ratio_value_number_to_time_series_length(x):
     return np.unique(x).size / x.size
 
 
+# @added 20201230 - Branch #3908: v0.9.1
+@set_property("fctype", "combiner")
+def original_pre_v090_fft_coefficient(x, c, param):
+    """
+    Calculates the fourier coefficients of the one-dimensional discrete Fourier Transform for real input by fast
+    fourier transformation algorithm
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param c: the time series name
+    :type c: str
+    :param param: contains dictionaries {"coeff": x} with x int and x >= 0
+    :type param: list
+    :return: the different feature values
+    :return type: pandas.Series
+    """
+
+    coefficients = set([config["coeff"] for config in param])
+    for coeff in coefficients:
+        if coeff < 0:
+            raise ValueError("Coefficients must be positive or zero.")
+
+    maximum_coefficient = max(max(coefficients), 1)
+    fft = np.fft.rfft(x, min(len(x), 2 * maximum_coefficient))
+
+    res = [fft[q] if q < len(fft) else 0 for q in coefficients]
+    res = [r.real if isinstance(r, complex) else r for r in res]
+    return pd.Series(res, index=["{}__fft_coefficient__coeff_{}".format(c, q) for q in coefficients])
+
+
+
+
 @set_property("fctype", "combiner")
 def fft_coefficient(x, param):
+    """
+    Calculates the fourier coefficients of the one-dimensional discrete Fourier Transform for real input by fast
+    fourier transformation algorithm
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param c: the time series name
+    :type c: str
+    :param param: contains dictionaries {"coeff": x} with x int and x >= 0
+    :type param: list
+    :return: the different feature values
+    :return type: zip
+    """
+
+    coefficients = set([config["coeff"] for config in param])
+    for coeff in coefficients:
+        if coeff < 0:
+            raise ValueError("Coefficients must be positive or zero.")
+
+    maximum_coefficient = max(max(coefficients), 1)
+    fft = np.fft.rfft(x, min(len(x), 2 * maximum_coefficient))
+
+    res = [fft[q] if q < len(fft) else 0 for q in coefficients]
+    res = [r.real if isinstance(r, complex) else r for r in res]
+    # return pd.Series(res, index=["__fft_coefficient__coeff_{}".format(q) for q in coefficients])
+    index = ["coeff_{}".format(q) for q in coefficients]
+    return zip(index, res)
+
+
+@set_property("fctype", "combiner")
+# @modified 20201230 - Branch #3908: v0.9.1
+# Reverted to original fft_coefficient that was changed in v0.9.0
+# def fft_coefficient(x, param):
+def v090_fft_coefficient(x, param):
     """
     Calculates the fourier coefficients of the one-dimensional discrete Fourier Transform for real input by fast
     fourier transformation algorithm
@@ -1305,7 +1569,10 @@ def cwt_coefficients(x, param):
 
         calculated_cwt_for_widths = calculated_cwt[widths]
 
-        indices += ["coeff_{}__w_{}__widths_{}".format(coeff, w, widths)]
+		# @modified 20201231 - Branch #3924: v0.17.9
+		# Revert to the original cwt_coefficients feature names changed in v0.16.0
+        # indices += ["coeff_{}__w_{}__widths_{}".format(coeff, w, widths)]
+        indices += ["widths_{}__coeff_{}__w_{}".format(widths, coeff, w)]
 
         i = widths.index(w)
         if calculated_cwt_for_widths.shape[1] <= coeff:
@@ -1380,7 +1647,10 @@ def ar_coefficient(x, param):
         k = parameter_combination["k"]
         p = parameter_combination["coeff"]
 
-        column_name = "coeff_{}__k_{}".format(p, k)
+		# @modified 20201231 - Branch #3924: v0.17.9
+		# Revert to the original ar_coefficient feature names changed in v0.16.0
+        # column_name = "coeff_{}__k_{}".format(p, k)
+        column_name = "k_{}__coeff_{}".format(k, p)
 
         if k not in calculated_ar_params:
             try:
@@ -1400,6 +1670,45 @@ def ar_coefficient(x, param):
             res[column_name] = np.NaN
 
     return [(key, value) for key, value in res.items()]
+
+
+# @added 20201230 - Branch #3908: v0.9.1
+# Readded mean_abs_change_quantiles that was removed in v0.9.0
+@set_property("fctype", "simple")
+def mean_abs_change_quantiles(x, ql, qh):
+    """
+    First fixes a corridor given by the quantiles ql and qh of the distribution of x. Then calculates the average
+    absolute value of consecutive changes of the series x inside this corridor. Think about selecting a corridor on the
+    y-Axis and only calculating the mean of the absolute change of the time series inside this corridor.
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param ql: the lower quantile of the corridor
+    :type ql: float
+    :param qh: the higher quantile of the corridor
+    :type qh: float
+    :return: the value of this feature
+    :return type: float
+    """
+    x = np.asarray(x)
+
+    if ql >= qh:
+        ValueError("ql={} should be lower than qh={}".format(ql, qh))
+    div = np.abs(np.diff(x))
+    # All values that originate from the corridor between the quantiles ql and qh will have the category 0,
+    # other will be np.NaN
+    try:
+        bin_cat = pd.qcut(x, [ql, qh], labels=False)
+        bin_cat_0 = bin_cat == 0
+    except ValueError:  # Occurs when ql are qh effectively equal, e.g. x is not long enough or is too categorical
+        return 0
+    # We only count changes that start and end inside the corridor
+    ind = (bin_cat_0 * np.roll(bin_cat_0, 1))[1:]
+    if sum(ind) == 0:
+        return 0
+    else:
+        ind_inside_corridor = np.where(ind == 1)
+        return np.mean(div[ind_inside_corridor])
 
 
 @set_property("fctype", "simple")
@@ -1448,6 +1757,10 @@ def change_quantiles(x, ql, qh, isabs, f_agg):
         return aggregator(div[ind_inside_corridor])
 
 
+
+# @added 20201230 - Branch #3908: v0.9.1
+# Readded the original time_reversal_asymmetry_statistic that was in use
+# pre v0.9.0 - https://github.com/blue-yonder/tsfresh/issues/198
 @set_property("fctype", "simple")
 def time_reversal_asymmetry_statistic(x, lag):
     """
@@ -1455,13 +1768,60 @@ def time_reversal_asymmetry_statistic(x, lag):
 
     .. math::
 
-        \\frac{1}{n-2lag} \\sum_{i=1}^{n-2lag} x_{i + 2 \\cdot lag}^2 \\cdot x_{i + lag} - x_{i + lag} \\cdot  x_{i}^2
+        \\frac{1}{n-2lag} \sum_{i=0}^{n-2lag} x_{i + 2 \cdot lag}^2 \cdot x_{i + lag} - x_{i + lag} \cdot  x_{i}^2
 
     which is
 
     .. math::
 
-        \\mathbb{E}[L^2(X)^2 \\cdot L(X) - L(X) \\cdot X^2]
+        \\mathbb{E}[L^2(X)^2 \cdot L(X) - L(X) \cdot X^2]
+
+    where :math:`\\mathbb{E}` is the mean and :math:`L` is the lag operator. It was proposed in [1] as a
+    promising feature to extract from time series.
+
+    References
+    ----------
+
+    .. [1] Fulcher, B.D., Jones, N.S. (2014).
+       Highly comparative feature-based time-series classification.
+       Knowledge and Data Engineering, IEEE Transactions on 26, 3026–3037.
+
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param lag: the lag that should be used in the calculation of the feature
+    :type lag: int
+    :return: the value of this feature
+    :return type: float
+    """
+    n = len(x)
+    x = np.asarray(x)
+    if 2 * lag > n:
+        return 0
+    elif 2 * lag == n:
+        return x[n - 1] * x[n - 1] * x[0] - x[lag - 1] * x[0] * x[0]
+    else:
+        return np.mean((np.roll(x, 2 * -lag) * np.roll(x, 2 * -lag) * x - np.roll(x, -lag) * x * x)[0:(n - 2 * lag)])
+
+
+@set_property("fctype", "simple")
+# @modified 20201230 - Branch #3908: v0.9.1
+# Reverted to the original time_reversal_asymmetry_statistic that was in use
+# pre v0.9.0 - https://github.com/blue-yonder/tsfresh/issues/198
+# def time_reversal_asymmetry_statistic(x, lag):
+def v090_time_reversal_asymmetry_statistic(x, lag):
+    """
+    This function calculates the value of
+
+    .. math::
+
+        \\frac{1}{n-2lag} \sum_{i=0}^{n-2lag} x_{i + 2 \cdot lag}^2 \cdot x_{i + lag} - x_{i + lag} \cdot  x_{i}^2
+
+    which is
+
+    .. math::
+
+        \\mathbb{E}[L^2(X)^2 \cdot L(X) - L(X) \cdot X^2]
 
     where :math:`\\mathbb{E}` is the mean and :math:`L` is the lag operator. It was proposed in [1] as a
     promising feature to extract from time series.
@@ -1561,6 +1921,11 @@ def binned_entropy(x, max_bins):
     return - np.sum(probs * np.log(probs))
 
 
+# @added 20201231 - Branch #3924: v0.17.9
+# Readded the original sample_entropy method that was chnaged in v0.16.0 as this
+# was a breaking change as per:
+# https://github.com/blue-yonder/tsfresh/pull/681 and
+# https://github.com/blue-yonder/tsfresh/pull/681/commits/ce493e5735bea79424f8bb357a4e357caebdb369
 # todo - include latex formula
 # todo - check if vectorizable
 @set_property("high_comp_cost", True)
@@ -1582,39 +1947,101 @@ def sample_entropy(x):
     """
     x = np.array(x)
 
-    # if one of the values is NaN, we can not compute anything meaningful
-    if np.isnan(x).any():
-        return np.nan
+    sample_length = 1  # number of sequential points of the time series
+    tolerance = 0.2 * np.std(x)  # 0.2 is a common value for r - why?
 
-    m = 2  # common value for m, according to wikipedia...
-    tolerance = 0.2 * np.std(x)  # 0.2 is a common value for r, according to wikipedia...
+    n = len(x)
+    prev = np.zeros(n)
+    curr = np.zeros(n)
+    A = np.zeros((1, 1))  # number of matches for m = [1,...,template_length - 1]
+    B = np.zeros((1, 1))  # number of matches for m = [1,...,template_length]
 
-    # Split time series and save all templates of length m
-    # Basically we turn [1, 2, 3, 4] into [1, 2], [2, 3], [3, 4]
-    xm = _into_subchunks(x, m)
+    for i in range(n - 1):
+        nj = n - i - 1
+        ts1 = x[i]
+        for jj in range(nj):
+            j = jj + i + 1
+            if abs(x[j] - ts1) < tolerance:  # distance between two vectors
+                curr[jj] = prev[jj] + 1
+                temp_ts_length = min(sample_length, curr[jj])
+                for m in range(int(temp_ts_length)):
+                    A[m] += 1
+                    if j < n - 1:
+                        B[m] += 1
+            else:
+                curr[jj] = 0
+        for j in range(nj):
+            prev[j] = curr[j]
 
-    # Now calculate the maximum distance between each of those pairs
-    #   np.abs(xmi - xm).max(axis=1)
-    # and check how many are below the tolerance.
-    # For speed reasons, we are not doing this in a nested for loop,
-    # but with numpy magic.
-    # Example:
-    # if x = [1, 2, 3]
-    # then xm = [[1, 2], [2, 3]]
-    # so we will substract xm from [1, 2] => [[0, 0], [-1, -1]]
-    # and from [2, 3] => [[1, 1], [0, 0]]
-    # taking the abs and max gives us:
-    # [0, 1] and [1, 0]
-    # as the diagonal elements are always 0, we substract 1.
-    B = np.sum([np.sum(np.abs(xmi - xm).max(axis=1) <= tolerance) - 1 for xmi in xm])
+    N = n * (n - 1) / 2
+    B = np.vstack(([N], B[0]))
 
-    # Similar for computing A
-    xmp1 = _into_subchunks(x, m + 1)
+    # sample entropy = -1 * (log (A/B))
+    similarity_ratio = A / B
+    se = -1 * np.log(similarity_ratio)
+    se = np.reshape(se, -1)
+    return se[0]
 
-    A = np.sum([np.sum(np.abs(xmi - xmp1).max(axis=1) <= tolerance) - 1 for xmi in xmp1])
 
-    # Return SampEn
-    return -np.log(A / B)
+# todo - include latex formula
+# todo - check if vectorizable
+# @modified 20201231 - Branch #3924: v0.17.9
+# Renamed and disabled the new sample_entropy method introduced in v0.16.0 as
+# this is a breaking change as per:
+# https://github.com/blue-yonder/tsfresh/pull/681 and
+# https://github.com/blue-yonder/tsfresh/pull/681/commits/ce493e5735bea79424f8bb357a4e357caebdb369
+# @set_property("high_comp_cost", True)
+# @set_property("fctype", "simple")
+# def v0160_sample_entropy(x):
+#     """
+#     Calculate and return sample entropy of x.
+#
+#     .. rubric:: References
+#
+#     |  [1] http://en.wikipedia.org/wiki/Sample_Entropy
+#     |  [2] https://www.ncbi.nlm.nih.gov/pubmed/10843903?dopt=Abstract
+#
+#     :param x: the time series to calculate the feature of
+#     :type x: numpy.ndarray
+#
+#     :return: the value of this feature
+#     :return type: float
+#     """
+#     x = np.array(x)
+#
+#     # if one of the values is NaN, we can not compute anything meaningful
+#     if np.isnan(x).any():
+#         return np.nan
+#
+#     m = 2  # common value for m, according to wikipedia...
+#     tolerance = 0.2 * np.std(x)  # 0.2 is a common value for r, according to wikipedia...
+#
+#     # Split time series and save all templates of length m
+#     # Basically we turn [1, 2, 3, 4] into [1, 2], [2, 3], [3, 4]
+#     xm = _into_subchunks(x, m)
+#
+#     # Now calculate the maximum distance between each of those pairs
+#     #   np.abs(xmi - xm).max(axis=1)
+#     # and check how many are below the tolerance.
+#     # For speed reasons, we are not doing this in a nested for loop,
+#     # but with numpy magic.
+#     # Example:
+#     # if x = [1, 2, 3]
+#     # then xm = [[1, 2], [2, 3]]
+#     # so we will substract xm from [1, 2] => [[0, 0], [-1, -1]]
+#     # and from [2, 3] => [[1, 1], [0, 0]]
+#     # taking the abs and max gives us:
+#     # [0, 1] and [1, 0]
+#     # as the diagonal elements are always 0, we substract 1.
+#     B = np.sum([np.sum(np.abs(xmi - xm).max(axis=1) <= tolerance) - 1 for xmi in xm])
+#
+#     # Similar for computing A
+#     xmp1 = _into_subchunks(x, m + 1)
+#
+#     A = np.sum([np.sum(np.abs(xmi - xmp1).max(axis=1) <= tolerance) - 1 for xmi in xmp1])
+#
+#     # Return SampEn
+#     return -np.log(A / B)
 
 
 @set_property("fctype", "simple")
@@ -1774,8 +2201,29 @@ def permutation_entropy(x, tau, dimension):
     return -np.sum(probs * np.log(probs))
 
 
+# @added 20201230 - Branch #3908: v0.9.1
+# Reverted to the original autocorrelation that was changed in v0.9.0
 @set_property("fctype", "simple")
 def autocorrelation(x, lag):
+    """
+    Calculates the lag autocorrelation of a lag value of lag.
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param lag: the lag
+    :type lag: int
+    :return: the value of this feature
+    :return type: float
+    """
+    x = pd.Series(x)
+    return pd.Series.autocorr(x, lag)
+
+
+@set_property("fctype", "simple")
+# @modified 20201230 - Branch #3908: v0.9.1
+# Reverted to the original autocorrelation that was changed in v0.9.0
+# def autocorrelation(x, lag):
+def v090_autocorrelation(x, lag):
     """
     Calculates the autocorrelation of the specified lag, according to the formula [1]
 
@@ -1891,6 +2339,23 @@ def value_count(x, value):
     Count occurrences of `value` in time series x.
 
     :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param value: the value to be counted
+    :type value: int or float
+    :return: the count
+    :rtype: int
+    """
+    if np.isnan(value):
+        return np.isnan(x).sum()
+    else:
+        return x[x == value].shape[0]
+
+@set_property("fctype", "simple")
+def v0110_value_count(x, value):
+    """
+    Count occurrences of `value` in time series x.
+
+    :param x: the time series to calculate the feature of
     :type x: numpy.ndarray
     :param value: the value to be counted
     :type value: int or float
@@ -1908,6 +2373,22 @@ def value_count(x, value):
 
 @set_property("fctype", "simple")
 def range_count(x, min, max):
+    """
+    Count observed values within the interval [min, max).
+
+    :param x: the time series to calculate the feature of
+    :type x: pandas.Series
+    :param min: the inclusive lower bound of the range
+    :type min: int or float
+    :param max: the exclusive upper bound of the range
+    :type max: int or float
+    :return: the count of values within the range
+    :rtype: int
+    """
+    return np.sum((x >= min) & (x < max))
+
+@set_property("fctype", "simple")
+def v0110_range_count(x, min, max):
     """
     Count observed values within the interval [min, max).
 
@@ -2172,43 +2653,44 @@ def count_below(x, t):
     """
     return np.sum(x <= t)/len(x)
 
-
-@set_property("fctype", "simple")
-def benford_correlation(x):
-    """
-    Useful for anomaly detection applications [1][2]. Returns the correlation from first digit distribution when
-    compared to the Newcomb-Benford's Law distribution [3][4].
-
-    .. math::
-
-        P(d)=\\log_{10}\\left(1+\\frac{1}{d}\\right)
-
-    where :math:`P(d)` is the Newcomb-Benford distribution for :math:`d` that is the leading digit of the number
-    {1, 2, 3, 4, 5, 6, 7, 8, 9}.
-
-    .. rubric:: References
-
-    |  [1] A Statistical Derivation of the Significant-Digit Law, Theodore P. Hill, Statistical Science, 1995
-    |  [2] The significant-digit phenomenon, Theodore P. Hill, The American Mathematical Monthly, 1995
-    |  [3] The law of anomalous numbers, Frank Benford, Proceedings of the American philosophical society, 1938
-    |  [4] Note on the frequency of use of the different digits in natural numbers, Simon Newcomb, American Journal of
-    |  mathematics, 1881
-
-   :param x: the time series to calculate the feature of
-   :type x: numpy.ndarray
-   :return: the value of this feature
-   :return type: float
-   """
-    x = np.asarray(x)
-
-    # retrieve first digit from data
-    x = np.array([int(str(np.format_float_scientific(i))[:1]) for i in np.abs(np.nan_to_num(x))])
-
-    # benford distribution
-    benford_distribution = np.array([np.log10(1 + 1/n) for n in range(1, 10)])
-
-    data_distribution = np.array([(x == n).mean() for n in range(1, 10)])
-
-    # np.corrcoef outputs the normalized covariance (correlation) between benford_distribution and data_distribution.
-    # In this case returns a 2x2 matrix, the  [0, 1] and [1, 1] are the values between the two arrays
-    return np.corrcoef(benford_distribution, data_distribution)[0, 1]
+# @modified 20201231 - Branch #3924: v0.17.9
+# Disabled the new feature benford_correlation
+# @set_property("fctype", "simple")
+# def benford_correlation(x):
+#     """
+#     Useful for anomaly detection applications [1][2]. Returns the correlation from first digit distribution when
+#     compared to the Newcomb-Benford's Law distribution [3][4].
+#
+#     .. math::
+#
+#         P(d)=\\log_{10}\\left(1+\\frac{1}{d}\\right)
+#
+#     where :math:`P(d)` is the Newcomb-Benford distribution for :math:`d` that is the leading digit of the number
+#     {1, 2, 3, 4, 5, 6, 7, 8, 9}.
+#
+#     .. rubric:: References
+#
+#     |  [1] A Statistical Derivation of the Significant-Digit Law, Theodore P. Hill, Statistical Science, 1995
+#     |  [2] The significant-digit phenomenon, Theodore P. Hill, The American Mathematical Monthly, 1995
+#     |  [3] The law of anomalous numbers, Frank Benford, Proceedings of the American philosophical society, 1938
+#     |  [4] Note on the frequency of use of the different digits in natural numbers, Simon Newcomb, American Journal of
+#     |  mathematics, 1881
+#
+#    :param x: the time series to calculate the feature of
+#    :type x: numpy.ndarray
+#    :return: the value of this feature
+#    :return type: float
+#    """
+#     x = np.asarray(x)
+#
+#     # retrieve first digit from data
+#     x = np.array([int(str(np.format_float_scientific(i))[:1]) for i in np.abs(np.nan_to_num(x))])
+#
+#     # benford distribution
+#     benford_distribution = np.array([np.log10(1 + 1/n) for n in range(1, 10)])
+#
+#     data_distribution = np.array([(x == n).mean() for n in range(1, 10)])
+#
+#     # np.corrcoef outputs the normalized covariance (correlation) between benford_distribution and data_distribution.
+#     # In this case returns a 2x2 matrix, the  [0, 1] and [1, 1] are the values between the two arrays
+#     return np.corrcoef(benford_distribution, data_distribution)[0, 1]
