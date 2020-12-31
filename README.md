@@ -6,7 +6,21 @@
 ![py27 status](https://img.shields.io/badge/python2.7-supported-green.svg)
 [![py352 status](https://img.shields.io/badge/python3.5.2-supported-green.svg)](https://github.com/blue-yonder/tsfresh/issues/8)
 
+# MODIFIED FORK
 
+This repository contains a *MODIFIED FORK* of the tsfresh python package for use with Skyline.
+This modified fork maintains the features extracted at v0.4.0 but moves this tsfresh version forward in line with blue-yonder/tsfresh in terms of tsfresh internals and dependencies, etc.
+
+- New features added to blue-yonder/tsfresh are disabled in this version
+- Original methods for features are maintained even if they are changed in blue-yonder/tsfresh
+
+*NOTE*: these branches/versions are tested against the tests/baseline/tsfresh_features_test.py, which was
+removed from blue-yonder/tsfresh in v0.7.0 but has been readded to this fork. These branches/versions are
+only tested via the Skyline build tests, they *are not* tested against the tsfresh tests.  Seeing as this
+fork follows the blue-yonder/tsfresh versions and retrospectively makes backwards compatible changes to the
+settings and feature_calculators.py which work with the Skyline tests.  Therefore these changes are not
+currently backported to the tsfresh tests themselves and the tsfresh tests will fail if run against any
+of theses branches.
 
 # tsfresh
 
