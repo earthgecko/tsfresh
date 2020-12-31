@@ -4,6 +4,12 @@ Changelog
 
 tsfresh uses `Semantic Versioning <http://semver.org/>`_
 
+Version 0.6.1
+=============
+
+- Disabled new feature: estimation of largest fixed point of deterministic dynamics
+- Disabled _esitmate_friedrich_coefficients, friedrich_coefficients and max_langevin_fixed_point
+
 Version 0.6.0
 =============
 
@@ -12,6 +18,11 @@ Version 0.6.0
 - new notebook: demonstration how to use tsfresh in a pipeline with train and test datasets
 - remove no logging handler warning
 - fix bug in the RelevantFeatureAugmenter regarding the evaluate_only_added_features parameterqq
+
+Version 0.5.1
+=============
+
+- Disabled new feature and feature renaming: sum_of_recurring_values, sum_of_recurring_data_points
 
 Version 0.5.0
 =============
