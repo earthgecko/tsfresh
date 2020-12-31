@@ -4,6 +4,11 @@ Changelog
 
 tsfresh uses `Semantic Versioning <http://semver.org/>`_
 
+Version 0.12.1
+==============
+
+- Disabled linear_trend_timewise added in v0.12.0
+- Readded tsfresh/examples/test_tsfresh_baseline_dataset.py which was removed in v0.12.0
 
 Version 0.12.0
 ==============
