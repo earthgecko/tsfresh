@@ -5,6 +5,13 @@ Changelog
 tsfresh uses `Semantic Versioning <http://semver.org/>`_
 
 
+Version 0.11.3
+==============
+- Disabled new feature calculators:
+    - fft_aggregated
+    - cid_ce
+- reverted to the original mean_second_derivate_central from mean_second_derivative_central
+
 Unreleased
 ==========
 - change chunking in energy_ratio_by_chunks to use all data points
@@ -31,6 +38,11 @@ Version 0.11.0
 - add columns_to_ignore parameter to from_columns method
 - add distribution module, contains support for distributed feature extraction on Dask
 
+Version 0.10.2
+==============
+- Disabled new feature calculators:
+    - partial autocorrelation
+
 Version 0.10.1
 ==============
 - split test suite into unit and integration tests
@@ -49,6 +61,26 @@ Version 0.10.0
     - illustrate the Benjamini Yekutieli procedure
 - fixed the following bugs
     - improperly quotation of dickey fuller settings
+
+Version 0.9.1
+=============
+- Disabled new feature calculators:
+    - ratio_beyond_r_sigma
+    - energy_ratio_by_chunks
+    - number_crossing_m
+    - c3
+    - angle & abs for fft coefficients
+    - agg_autocorrelation
+    - p-Value and usedLag for augmented_dickey_fuller
+    - change_quantiles
+- reverted the calculation of the following features:
+    - fft_coefficients
+    - autocorrelation
+    - time_reversal_asymmetry_statistic
+- readded the following feature calculators:
+    - large_number_of_peak
+    - mean_autocorrelation
+    - mean_abs_change_quantiles
 
 Version 0.9.0
 =============
@@ -104,6 +136,11 @@ Version 0.8.0
 - added chapter in docs about the new API
 - adjusted old notebooks and documentation to new API
 
+Version 0.7.2
+=============
+
+- readded baseline unit tests
+
 Version 0.7.1
 =============
 
@@ -130,6 +167,12 @@ Version 0.7.0
     - an index with same name as id_column was breaking parallelization
     - friedrich_coefficients and max_langevin_fixed_point were occasionally stalling
 
+Version 0.6.1
+=============
+
+- Disabled new feature: estimation of largest fixed point of deterministic dynamics
+- Disabled _esitmate_friedrich_coefficients, friedrich_coefficients and max_langevin_fixed_point
+
 Version 0.6.0
 =============
 
@@ -138,6 +181,11 @@ Version 0.6.0
 - new notebook: demonstration how to use tsfresh in a pipeline with train and test datasets
 - remove no logging handler warning
 - fixed bug in the RelevantFeatureAugmenter regarding the evaluate_only_added_features parameters
+
+Version 0.5.1
+=============
+
+- Disabled new feature and feature renaming: sum_of_recurring_values, sum_of_recurring_data_points
 
 Version 0.5.0
 =============
