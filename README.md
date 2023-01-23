@@ -4,13 +4,35 @@
 
 -----------------
 
-# MODIFIED FORK
+# MODIFIED FORK for Skyline
 
-This repository contains a *MODIFIED FORK* of the tsfresh python package for use with Skyline.
-This modified fork maintains the features extracted at v0.4.0 but moves this tsfresh version forward in line with blue-yonder/tsfresh in terms of tsfresh internals and dependencies, etc.
+This repository contains a *MODIFIED FORK* of the tsfresh python package for use with Skyline (https://github.com/earthgecko/skyline).
+This modified fork maintains the features extracted at `tsfresh==v0.4.0` but moves this tsfresh version forward in line with blue-yonder/tsfresh in terms of tsfresh internals and dependencies, etc.  The original methods for features are maintained even if they are changed in blue-yonder/tsfresh.
 
-- New features added to blue-yonder/tsfresh are disabled in this version
-- Original methods for features are maintained even if they are changed in blue-yonder/tsfresh
+Required algorithms are maintained in terms of ensuring that any changes to required algorithms in terms
+of parameter renames, e.g. `unbiased=True` changing to `adjusted=True` and ensuring that any changes made
+to the tsfresh versions of the algorithm do not cause regressions in the values of the results of each feature
+or the arbitrary names of the features.
+
+This is achieved specifically using modified versions of:
+
+- tsfresh/feature_extraction/feature_calculators.py - to maintain the required algorithms and disable new algorithms added to tsfresh
+- tsfresh/feature_extraction/settings.py - to maintain which algorithms are run and disable the running of new algorithms added to tsfresh
+
+The reason for this fork is because tsfresh is constantly adding new algorithms, removing algorithms,
+changing algorithm run parameters and changing algorithm and features names.  For use in Skyline every version of
+tsfresh must calculate the **same** values and feature names for every feature (algorithm) on the same test timeseries.
+Further it must run the same algorithms in every version.
+
+A features profile calculated with earthgecko/tsfresh v0.4.0 should be the same if it is generated earthgecko/tsfresh v0-17.9 or v0.19.1
+
+Version mappings to which blueyonder/tsfresh the earthgecko/tsfresh version is based on:
+blueyonder/tsfresh-v0.17.1 -> earthgecko/tsfresh-v0-17.9
+blueyonder/tsfresh-v0.20.0 -> earthgecko/tsfresh-v0-19.1
+
+It must be noted that the results of the features calculations will change in decimal precision or decimal values
+between Python versions, library versions and even machines.  These changes are acceptable from a Skyline perspective and are
+`np.is_close` close enough.
 
 *NOTE*: these branches/versions are tested against the tests/baseline/tsfresh_features_test.py, which was
 removed from blue-yonder/tsfresh in v0.7.0 but has been readded to this fork. These branches/versions are
@@ -26,8 +48,7 @@ of theses branches.
 [![Build Status](https://github.com/blue-yonder/tsfresh/workflows/Test%20Default%20Branch/badge.svg)](https://github.com/blue-yonder/tsfresh/actions)
 [![codecov](https://codecov.io/gh/blue-yonder/tsfresh/branch/main/graph/badge.svg)](https://codecov.io/gh/blue-yonder/tsfresh)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/blue-yonder/tsfresh/blob/main/LICENSE.txt)
-[![Gitter chat](https://badges.gitter.im/tsfresh/Lobby.svg)](https://gitter.im/tsfresh/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
-[![py352 status](https://img.shields.io/badge/python3.5.2-supported-green.svg)](https://github.com/blue-yonder/tsfresh/issues/8)
+[![py36 status](https://img.shields.io/badge/python3.6.10-supported-green.svg)](https://github.com/blue-yonder/tsfresh/issues/8)
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/blue-yonder/tsfresh/main?filepath=notebooks)
 [![Downloads](https://pepy.tech/badge/tsfresh)](https://pepy.tech/project/tsfresh)
 
@@ -35,7 +56,7 @@ This repository contains the *TSFRESH* python package. The abbreviation stands f
 
 *"Time Series Feature extraction based on scalable hypothesis tests"*.
 
-The package contains many feature extraction methods and a robust feature selection algorithm.
+The package provides systematic time-series feature extraction by combining established algorithms from statistics, time-series analysis, signal processing, and nonlinear dynamics with a robust feature selection algorithm. In this context, the term *time-series* is interpreted in the broadest possible sense, such that any types of sampled data or even event sequences can be characterised.
 
 ## Spend less time on feature engineering
 
@@ -66,17 +87,58 @@ This filtering procedure evaluates the explaining power and importance of each c
 It is based on the well developed theory of hypothesis testing and uses a multiple test procedure.
 As a result the filtering process mathematically controls the percentage of irrelevant extracted features.
 
-The  *TSFRESH* package is described in the following open access paper
+The  *TSFRESH* package is described in the following open access paper:
 
-* Christ, M., Braun, N., Neuffer, J. and Kempa-Liehr A.W. (2018).
+* Christ, M., Braun, N., Neuffer, J., and Kempa-Liehr A.W. (2018).
    _Time Series FeatuRe Extraction on basis of Scalable Hypothesis tests (tsfresh -- A Python package)._
-   Neurocomputing 307 (2018) 72-77, [doi:10.1016/j.neucom.2018.03.067](https://doi.org/10.1016/j.neucom.2018.03.067).
+   Neurocomputing 307, p. 72-77, [doi: 10.1016/j.neucom.2018.03.067](https://doi.org/10.1016/j.neucom.2018.03.067).
 
-The FRESH algorithm is described in the following whitepaper
+The FRESH algorithm is described in the following whitepaper:
 
-* Christ, M., Kempa-Liehr, A.W. and Feindt, M. (2017).
+* Christ, M., Kempa-Liehr, A.W., and Feindt, M. (2017).
     _Distributed and parallel time series feature extraction for industrial big data applications._
     ArXiv e-print 1610.07717,  [https://arxiv.org/abs/1610.07717](https://arxiv.org/abs/1610.07717).
+
+Systematic time-series feature extraction even works for unsupervised problems:
+
+* Teh, H.Y., Wang, K.I-K., Kempa-Liehr, A.W. (2021).
+    _Expect the Unexpected: Unsupervised feature selection for automated sensor anomaly detection._
+    IEEE Sensors Journal 15.16, p. 18033-18046, [doi: 10.1109/JSEN.2021.3084970](https://doi.org/10.1109/JSEN.2021.3084970).
+
+Due to the fact that tsfresh basically provides time-series feature extraction for free, you can now concentrate on engineering new time-series,
+like e.g. differences of signals from synchronous measurements, which provide even better time-series features:
+
+* Kempa-Liehr, A.W., Oram, J., Wong, A., Finch, M., Besier, T. (2020).
+    _Feature engineering workflow for activity recognition from synchronized inertial measurement units._
+    In: Pattern Recognition. ACPR 2019. Ed. by M. Cree et al. Vol. 1180. Communications in Computer and Information Science (CCIS).
+    Singapore: Springer, p. 223–231. [doi: 10.1007/978-981-15-3651-9_20](https://doi.org/10.1007/978-981-15-3651-9_20).
+
+* Simmons, S., Jarvis, L., Dempsey, D., Kempa-Liehr, A.W. (2021).
+    _Data Mining on Extremely Long Time-Series._
+    In: 2021 International Conference on Data Mining Workshops (ICDMW). Ed. by B. Xue et al.
+    Los Alamitos: IEEE, p. 1057-1066. [doi: 10.1109/ICDMW53433.2021.00137](https://doi.org/10.1109/ICDMW53433.2021.00137).
+
+Systematic time-series features engineering allows to work with time-series samples of different lengths, because every time-series is projected
+into a well-defined feature space. This approach allows the design of robust machine learning algorithms in applications with missing data.
+
+* Kennedy, A., Gemma, N., Rattenbury, N., Kempa-Liehr, A.W. (2021).
+    _Modelling the projected separation of microlensing events using systematic time-series feature engineering._
+    Astronomy and Computing 35.100460, p. 1–14, [doi: 10.1016/j.ascom.2021.100460](https://doi.org/10.1016/j.ascom.2021.100460)
+
+Is your time-series classification problem imbalanced? There is a good chance that undersampling of time-series feature matrices
+might solve your problem:
+
+* Dempsey, D.E., Cronin, S.J., Mei, S., Kempa-Liehr, A.W. (2020).
+    _Automatic precursor recognition and real-time forecasting of sudden explosive volcanic eruptions at Whakaari, New Zealand_.
+    Nature Communications 11.3562, p. 1-8, [doi: 10.1038/s41467-020-17375-2](https://doi.org/10.1038/s41467-020-17375-2).
+
+Natural language processing of written texts is an example of applying systematic time-series feature engineering to event sequences,
+which is described in the following open access paper:
+
+* Tang, Y., Blincoe, K., Kempa-Liehr, A.W. (2020).
+    _Enriching Feature Engineering for Short Text Samples by Language Time Series Analysis._
+    EPJ Data Science 9.26, p. 1–59. [doi: 10.1140/epjds/s13688-020-00244-9](https://doi.org/10.1140/epjds/s13688-020-00244-9)
+
 
 
 ## Advantages of tsfresh
@@ -97,13 +159,20 @@ If you are interested in the technical workings, go to see our comprehensive Rea
 
 The algorithm, especially the filtering part are also described in the paper mentioned above.
 
-If you have some questions or feedback you can find the developers in the [gitter chatroom.](https://gitter.im/tsfresh/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
-
 We appreciate any contributions, if you are interested in helping us to make *TSFRESH* the biggest archive of feature extraction methods in python, just head over to our [How-To-Contribute](http://tsfresh.readthedocs.io/en/latest/text/how_to_contribute.html) instructions.
 
 If you want to try out `tsfresh` quickly or if you want to integrate it into your workflow, we also have a docker image available:
 
     docker pull nbraun/tsfresh
+
+
+## Backwards compatibility
+
+If you need to reproduce or update time-series features, which were computed with the `matrixprofile` feature calculators, you need to create a Python 3.8 environment:
+
+    conda create --name tsfresh__py_3.8 python=3.8
+    conda activate tsfresh__py_3.8
+    pip install tsfresh[matrixprofile]
 
 ## Acknowledgements
 

@@ -16,24 +16,36 @@ from tsfresh.feature_extraction import feature_calculators
 from tsfresh.feature_extraction.data import to_tsdata
 from tsfresh.feature_extraction.settings import ComprehensiveFCParameters
 from tsfresh.utilities import profiling
-from tsfresh.utilities.distribution import MapDistributor, MultiprocessingDistributor, \
-    DistributorBaseClass, ApplyDistributor
+from tsfresh.utilities.distribution import (
+    ApplyDistributor,
+    DistributorBaseClass,
+    MapDistributor,
+    MultiprocessingDistributor,
+)
 from tsfresh.utilities.string_manipulation import convert_to_output_format
 
 _logger = logging.getLogger(__name__)
 
 
-def extract_features(timeseries_container, default_fc_parameters=None,
-                     kind_to_fc_parameters=None,
-                     column_id=None, column_sort=None, column_kind=None, column_value=None,
-                     chunksize=defaults.CHUNKSIZE,
-                     n_jobs=defaults.N_PROCESSES, show_warnings=defaults.SHOW_WARNINGS,
-                     disable_progressbar=defaults.DISABLE_PROGRESSBAR,
-                     impute_function=defaults.IMPUTE_FUNCTION,
-                     profile=defaults.PROFILING,
-                     profiling_filename=defaults.PROFILING_FILENAME,
-                     profiling_sorting=defaults.PROFILING_SORTING,
-                     distributor=None, pivot=True):
+def extract_features(
+    timeseries_container,
+    default_fc_parameters=None,
+    kind_to_fc_parameters=None,
+    column_id=None,
+    column_sort=None,
+    column_kind=None,
+    column_value=None,
+    chunksize=defaults.CHUNKSIZE,
+    n_jobs=defaults.N_PROCESSES,
+    show_warnings=defaults.SHOW_WARNINGS,
+    disable_progressbar=defaults.DISABLE_PROGRESSBAR,
+    impute_function=defaults.IMPUTE_FUNCTION,
+    profile=defaults.PROFILING,
+    profiling_filename=defaults.PROFILING_FILENAME,
+    profiling_sorting=defaults.PROFILING_SORTING,
+    distributor=None,
+    pivot=True,
+):
     """
     Extract features from
 
@@ -107,7 +119,8 @@ def extract_features(timeseries_container, default_fc_parameters=None,
     :param disable_progressbar: Do not show a progressbar while doing the calculation.
     :type disable_progressbar: bool
 
-    :param impute_function: None, if no imputing should happen or the function to call for imputing.
+    :param impute_function: None, if no imputing should happen or the function to call for
+        imputing the result dataframe. Imputing will never happen on the input data.
     :type impute_function: None or callable
 
     :param profile: Turn on profiling during feature extraction
@@ -148,17 +161,21 @@ def extract_features(timeseries_container, default_fc_parameters=None,
         else:
             warnings.simplefilter("default")
 
-        result = _do_extraction(df=timeseries_container,
-                                column_id=column_id, column_value=column_value,
-                                column_kind=column_kind,
-                                column_sort=column_sort,
-                                n_jobs=n_jobs, chunk_size=chunksize,
-                                disable_progressbar=disable_progressbar,
-                                show_warnings=show_warnings,
-                                default_fc_parameters=default_fc_parameters,
-                                kind_to_fc_parameters=kind_to_fc_parameters,
-                                distributor=distributor,
-                                pivot=pivot)
+        result = _do_extraction(
+            df=timeseries_container,
+            column_id=column_id,
+            column_value=column_value,
+            column_kind=column_kind,
+            column_sort=column_sort,
+            n_jobs=n_jobs,
+            chunk_size=chunksize,
+            disable_progressbar=disable_progressbar,
+            show_warnings=show_warnings,
+            default_fc_parameters=default_fc_parameters,
+            kind_to_fc_parameters=kind_to_fc_parameters,
+            distributor=distributor,
+            pivot=pivot,
+        )
 
         # Impute the result if requested
         if impute_function is not None:
@@ -166,16 +183,28 @@ def extract_features(timeseries_container, default_fc_parameters=None,
 
     # Turn off profiling if it was turned on
     if profile:
-        profiling.end_profiling(profiler, filename=profiling_filename,
-                                sorting=profiling_sorting)
+        profiling.end_profiling(
+            profiler, filename=profiling_filename, sorting=profiling_sorting
+        )
 
     return result
 
 
-def _do_extraction(df, column_id, column_value, column_kind, column_sort,
-                   default_fc_parameters, kind_to_fc_parameters,
-                   n_jobs, chunk_size, disable_progressbar, show_warnings, distributor,
-                   pivot):
+def _do_extraction(
+    df,
+    column_id,
+    column_value,
+    column_kind,
+    column_sort,
+    default_fc_parameters,
+    kind_to_fc_parameters,
+    n_jobs,
+    chunk_size,
+    disable_progressbar,
+    show_warnings,
+    distributor,
+    pivot,
+):
     """
     Wrapper around the _do_extraction_on_chunk, which calls it on all chunks in the data frame.
     A chunk is a subset of the data, with a given kind and id - so a single time series.
@@ -232,27 +261,42 @@ def _do_extraction(df, column_id, column_value, column_kind, column_sort,
 
     if distributor is None:
         if isinstance(data, Iterable):
-            if n_jobs == 0:
-                distributor = MapDistributor(disable_progressbar=disable_progressbar,
-                                             progressbar_title="Feature Extraction")
+            if n_jobs == 0 or n_jobs == 1:
+                distributor = MapDistributor(
+                    disable_progressbar=disable_progressbar,
+                    progressbar_title="Feature Extraction",
+                )
             else:
-                distributor = MultiprocessingDistributor(n_workers=n_jobs,
-                                                         disable_progressbar=disable_progressbar,
-                                                         progressbar_title="Feature Extraction",
-                                                         show_warnings=show_warnings)
+                distributor = MultiprocessingDistributor(
+                    n_workers=n_jobs,
+                    disable_progressbar=disable_progressbar,
+                    progressbar_title="Feature Extraction",
+                    show_warnings=show_warnings,
+                )
         else:
-            distributor = ApplyDistributor(meta=[(data.column_id, 'int64'), ('variable', 'object'),
-                                                 ('value', 'float64')])
+            distributor = ApplyDistributor(
+                meta=[
+                    (data.column_id, "int64"),
+                    ("variable", "object"),
+                    ("value", "float64"),
+                ]
+            )
 
     if not isinstance(distributor, DistributorBaseClass):
         raise ValueError("the passed distributor is not an DistributorBaseClass object")
 
-    kwargs = dict(default_fc_parameters=default_fc_parameters,
-                  kind_to_fc_parameters=kind_to_fc_parameters)
+    kwargs = dict(
+        default_fc_parameters=default_fc_parameters,
+        kind_to_fc_parameters=kind_to_fc_parameters,
+        show_warnings=show_warnings,
+    )
 
-    result = distributor.map_reduce(_do_extraction_on_chunk, data=data,
-                                    chunk_size=chunk_size,
-                                    function_kwargs=kwargs)
+    result = distributor.map_reduce(
+        _do_extraction_on_chunk,
+        data=data,
+        chunk_size=chunk_size,
+        function_kwargs=kwargs,
+    )
 
     if not pivot:
         return result
@@ -261,7 +305,9 @@ def _do_extraction(df, column_id, column_value, column_kind, column_sort,
     return return_df
 
 
-def _do_extraction_on_chunk(chunk, default_fc_parameters, kind_to_fc_parameters):
+def _do_extraction_on_chunk(
+    chunk, default_fc_parameters, kind_to_fc_parameters, show_warnings=True
+):
     """
     Main function of this module: use the feature calculators defined in the
     default_fc_parameters or kind_to_fc_parameters parameters and extract all
@@ -280,6 +326,7 @@ def _do_extraction_on_chunk(chunk, default_fc_parameters, kind_to_fc_parameters)
     :param chunk: A tuple of sample_id, kind, data
     :param default_fc_parameters: A dictionary of feature calculators.
     :param kind_to_fc_parameters: A dictionary of fc_parameters for special kinds or None.
+    :param show_warnings: Surpress warnings (some feature calculators are quite verbose)
     :return: A list of calculated features.
     """
     sample_id, kind, data = chunk
@@ -289,33 +336,38 @@ def _do_extraction_on_chunk(chunk, default_fc_parameters, kind_to_fc_parameters)
         fc_parameters = default_fc_parameters
 
     def _f():
-        for function_name, parameter_list in fc_parameters.items():
-            func = getattr(feature_calculators, function_name)
+        for f_or_function_name, parameter_list in fc_parameters.items():
+            if callable(f_or_function_name):
+                func = f_or_function_name
+            else:
+                func = getattr(feature_calculators, f_or_function_name)
 
             # If the function uses the index, pass is at as a pandas Series.
             # Otherwise, convert to numpy array
-            if getattr(func, 'input', False) == 'pd.Series':
+            if getattr(func, "input", None) == "pd.Series":
                 # If it has a required index type, check that the data has the right index type.
-                index_type = getattr(func, 'index_type', None)
+                index_type = getattr(func, "index_type", None)
                 if index_type is not None:
                     try:
                         assert isinstance(data.index, index_type)
                     except AssertionError:
                         warnings.warn(
                             "{} requires the data to have a index of type {}. Results will "
-                            "not be calculated".format(function_name, index_type)
+                            "not be calculated".format(f_or_function_name, index_type)
                         )
                         continue
                 x = data
             else:
                 x = data.values
 
-            if func.fctype == "combiner":
+            if getattr(func, "fctype", None) == "combiner":
                 result = func(x, param=parameter_list)
             else:
                 if parameter_list:
-                    result = ((convert_to_output_format(param), func(x, **param)) for param in
-                              parameter_list)
+                    result = (
+                        (convert_to_output_format(param), func(x, **param))
+                        for param in parameter_list
+                    )
                 else:
                     result = [("", func(x))]
 
@@ -325,4 +377,10 @@ def _do_extraction_on_chunk(chunk, default_fc_parameters, kind_to_fc_parameters)
                     feature_name += "__" + str(key)
                 yield (sample_id, feature_name, item)
 
-    return list(_f())
+    with warnings.catch_warnings():
+        if not show_warnings:
+            warnings.simplefilter("ignore")
+        else:
+            warnings.simplefilter("default")
+
+        return list(_f())

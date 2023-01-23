@@ -5,20 +5,31 @@
 This file contains methods/objects for controlling which features will be extracted when calling extract_features.
 For the naming of the features, see :ref:`feature-naming-label`.
 """
+# @added 20230105 - Branch #4456 - v0.19.1
+# Added logging which was added in blueyonder/tsfresh-v0.20.0
+import logging
+from builtins import range
+# @added 20230105 - Branch #4456 - v0.19.1
+# Added UserDict which was added in blueyonder/tsfresh-v0.18.0
+from collections import UserDict
 from inspect import getfullargspec
+from itertools import product
 
+# @added 20230105 - Branch #4456 - v0.19.1
+# Added cloudpickle which was added in blueyonder/tsfresh-v0.19.1
+import cloudpickle
 import pandas as pd
 
 # @added 20201231 - Branch #3916: v0.13.1
 # Readded numpy for value_count
 import numpy as np
 
-from builtins import range
-
-from itertools import product
-
 from tsfresh.feature_extraction import feature_calculators
 from tsfresh.utilities.string_manipulation import get_config_from_string
+
+# @added 20230105 - Branch #4456 - v0.19.1
+# Added _logger which was added in blueyonder/tsfresh-v0.20.0
+_logger = logging.getLogger(__name__)
 
 
 def from_columns(columns, columns_to_ignore=None):
@@ -55,11 +66,13 @@ def from_columns(columns, columns_to_ignore=None):
             raise TypeError("Column name {} should be a string or unicode".format(col))
 
         # Split according to our separator into <col_name>, <feature_name>, <feature_params>
-        parts = col.split('__')
+        parts = col.split("__")
         n_parts = len(parts)
 
         if n_parts == 1:
-            raise ValueError("Splitting of columnname {} resulted in only one part.".format(col))
+            raise ValueError(
+                "Splitting of columnname {} resulted in only one part.".format(col)
+            )
 
         kind = parts[0]
         feature_name = parts[1]
@@ -82,8 +95,61 @@ def from_columns(columns, columns_to_ignore=None):
     return kind_to_fc_parameters
 
 
+# @added 20230106 - Branch #4456 - v0.19.1
+# Added include_function which was added in blueyonder/tsfresh-v0.20.0
+def include_function(func, exclusion_attr="input_type"):
+    """Helper function for selecting specific subset of functions subject to an exclusion attribute
+    and the availability of optional dependencies.
+
+    :param func: function to be tested for inclusion
+    :type func: object
+    :param exclusion_attr: function attribute qualifying as exclusion criterion
+    :type exclusion_attr: str
+
+    :return: Boolean indicating if the specific function matches the inclusion criteria.
+    :rtype: bool
+    """
+    decision = (
+        hasattr(func, "fctype")
+        and not hasattr(func, exclusion_attr)
+        and not (
+            hasattr(func, "dependency_available")
+            and getattr(func, "dependency_available") is False
+        )
+    )
+    return decision
+
+
+# @added 20230106 - Branch #4456 - v0.19.1
+# Added PickableSettings which was added in blueyonder/tsfresh-v0.19.0
+class PickableSettings(UserDict):
+    """Base object for all settings, which is a pickable dict.
+    For user-specified functions, the settings dictionary might include functions as a key.
+    These functions unfortunately can not easily be transported to workers in multiprocessing
+    or multi-cloud setups, as they are not pickable by default.
+    Therefore, we change the pickle-behavior of this class and use cloudpickle for
+    pickling and unpickling the keys of the dictionary, before pickling the full object.
+    cloudpickle is able to pickle much more functions than pickle can and pickle will
+    only see the already encoded keys (not the raw functions).
+    """
+
+    def __getstate__(self):
+        """Called on pickling. Encode the keys by cloudpickling them"""
+        state = {cloudpickle.dumps(key): value for key, value in self.items()}
+        return state
+
+    def __setstate__(self, state):
+        """Called on un-pickling. cloudunpickle the keys again"""
+        state = {cloudpickle.loads(key): value for key, value in state.items()}
+        # please note that the internal dictionary is stored as "data" in the UserDict
+        self.__dict__.update(data=state)
+
+
 # todo: this classes' docstrings are not completely up-to-date
-class ComprehensiveFCParameters(dict):
+# @modified 20230106 - Branch #4456 - v0.19.1
+# Changed parameter from dict to PickableSettings as per blueyonder/tsfresh-v0.19.0
+# class ComprehensiveFCParameters(dict):
+class ComprehensiveFCParameters(PickableSettings):
     """
     Create a new ComprehensiveFCParameters instance. You have to pass this instance to the
     extract_feature instance.
@@ -107,114 +173,266 @@ class ComprehensiveFCParameters(dict):
     def __init__(self):
         name_to_param = {}
 
+        # @added 20230110 - Branch #4456 - v0.19.1
+        # Remove matrix_profile which was added in blueyonder/tsfresh-v0.18.0
+        # otherwise the tests/baseline/tsfresh_features_test.py in Skyline
+        # fail with KeyError: 'matrix_profile'
+        exclude_features = [
+            'matrix_profile', 'v0190_absolute_maximum',
+            'v0170_benford_correlation',
+        ]
+
         for name, func in feature_calculators.__dict__.items():
-            if callable(func) and hasattr(func, "fctype") and len(getfullargspec(func).args) == 1:
+
+            if (
+                callable(func)
+                and hasattr(func, "fctype")
+                and len(getfullargspec(func).args) == 1
+            ):
                 name_to_param[name] = None
 
-        name_to_param.update({
-            "time_reversal_asymmetry_statistic": [{"lag": lag} for lag in range(1, 4)],
-            # @modified 20201230 - Branch #3908: v0.9.1
-            # Disabled c3 added in v0.9.0
-            # "c3": [{"lag": lag} for lag in range(1, 4)],
-            # @modified 20201231 - Branch #3908: v0.11.3
-			# Disabled cid_ce added in v0.11.1
-            # "cid_ce": [{"normalize": True}, {"normalize": False}],
-            "symmetry_looking": [{"r": r * 0.05} for r in range(20)],
-            # @modified 20201230 - Branch #3908: v0.9.1
-            # Revert to original large_standard_deviation
-            # "large_standard_deviation": [{"r": r * 0.05} for r in range(1, 20)],
-            "large_standard_deviation": [{"r": r * 0.05} for r in range(10)],
-            "quantile": [{"q": q} for q in [.1, .2, .3, .4, .6, .7, .8, .9]],
-            "autocorrelation": [{"lag": lag} for lag in range(10)],
-            # @modified 20201230 - Branch #3908: v0.9.1
-            # Disabled agg_autocorrelation added in v0.9.0
-            # "agg_autocorrelation": [{"f_agg": s} for s in ["mean", "median", "var"]],
-            # @modified 20201231 - Branch #3908: v0.11.3
-			# Disabled Fix agg change made to agg_autocorrelation added in v0.11. 
-			# https://github.com/blue-yonder/tsfresh/commit/a53fb6a1735a6c837f53da50344fc4a1b793d664
-            # "agg_autocorrelation": [{"f_agg": s, "maxlag": 40} for s in ["mean", "median", "var"]],
-            # @modified 20201230 - Branch #3910: v0.10.2
-            # Disabled partial_autocorrelation added in v0.10.0
-            # "partial_autocorrelation": [{"lag": lag} for lag in range(10)],
-            "number_cwt_peaks": [{"n": n} for n in [1, 5]],
-            # @modified 20201230 - Branch #3908: v0.9.1
-            # Revert to original number_peaks
-            # "number_peaks": [{"n": n} for n in [1, 3, 5, 10, 50]],
-            "number_peaks": [{"n": n} for n in [1, 3, 5]],
-            # @modified 20201230 - Branch #3908: v0.9.1
-            # Readded large_number_of_peaks
-            "large_number_of_peaks": [{"n": n} for n in [1, 3, 5]],
-            "binned_entropy": [{"max_bins": max_bins} for max_bins in [10]],
-            "index_mass_quantile": [{"q": q} for q in [.1, .2, .3, .4, .6, .7, .8, .9]],
-            "cwt_coefficients": [{"widths": width, "coeff": coeff, "w": w} for
-                                 width in [(2, 5, 10, 20)] for coeff in range(15) for w in (2, 5, 10, 20)],
-            "spkt_welch_density": [{"coeff": coeff} for coeff in [2, 5, 8]],
-            "ar_coefficient": [{"coeff": coeff, "k": k} for coeff in range(5) for k in [10]],
-            # @modified 20201230 - Branch #3908: v0.9.1
-            # Revert to original mean_abs_change_quantiles
-            # "change_quantiles": [{"ql": ql, "qh": qh, "isabs": b, "f_agg": f}
-            #                               for ql in [0., .2, .4, .6, .8] for qh in [.2, .4, .6, .8, 1.]
-            #                               for b in [False, True] for f in ["mean", "var"]],
-            # @modified 20201231 - Branch #3916: v0.12.1
-			# Disabled new change_quantiles introduced in v0.12.0
-            # "change_quantiles": [{"ql": ql, "qh": qh, "isabs": b, "f_agg": f}
-            #                               for ql in [0., .2, .4, .6, .8] for qh in [.2, .4, .6, .8, 1.]
-            #                               for b in [False, True] for f in ["mean", "var"] if ql < qh],
-            "mean_abs_change_quantiles": [{"ql": ql, "qh": qh}
-                                          for ql in [0., .2, .4, .6, .8] for qh in [.2, .4, .6, .8, 1.]],
-            # @modified 20201230 - Branch #3908: v0.9.1
-            # Revert to original fft_coefficient
-            # "fft_coefficient": [{"coeff": k, "attr": a} for a, k in product(["real", "imag", "abs", "angle"], range(100))],
-            "fft_coefficient": [{"coeff": coeff} for coeff in range(0, 10)],
-            # @modified 20201231 - Branch #3908: v0.11.3
-			# Disabled fft_aggregated added in v0.11.0
-            # "fft_aggregated": [{"aggtype": s} for s in ["centroid", "variance", "skew", "kurtosis"]],
-            # @modified 20201231 - Branch #3908: v0.11.3
-			# Changed to new value_count and range_count method
-            # "value_count": [{"value": value} for value in [0, 1, -1]],
-            # "range_count": [{"min": -1, "max": 1}, {"min": 1e12, "max": 0}, {"min": 0, "max": 1e12}            
-            "value_count": [{"value": value} for value in [0, 1, np.NaN, np.PINF, np.NINF]],
-            "range_count": [{"min": -1, "max": 1}],
-            # @modified 20201231 - Branch #3908: v0.11.3
-			# Disabled to new value_count and range_count method added v0.13.0 use v0.11.1 version
-            # "value_count": [{"value": value} for value in [0, 1, -1]],
-            # "range_count": [{"min": -1, "max": 1}, {"min": 1e12, "max": 0}, {"min": 0, "max": 1e12}],
-            "approximate_entropy": [{"m": 2, "r": r} for r in [.1, .3, .5, .7, .9]],
-            # @modified 20201230 - Branch #3902: v0.6.1
-            # Disabled friedrich_coefficients and max_langevin_fixed_point
-            # introduced in v0.6.0
-            # "friedrich_coefficients": (lambda m: [{"coeff": coeff, "m": m, "r": 30} for coeff in range(m + 1)])(3),
-            # "max_langevin_fixed_point": [{"m": 3, "r": 30}],
-            # @modified 20201230 - Branch #3906: v0.8.2
-            # Disabled linear_trend and agg_linear_trend introduced in v0.8.1
-            # "linear_trend": [{"attr": "pvalue"}, {"attr": "rvalue"}, {"attr": "intercept"},
-            #                  {"attr": "slope"}, {"attr": "stderr"}],
-            # "agg_linear_trend": [{"attr": attr, "chunk_len": i, "f_agg": f}
-            #                      for attr in ["rvalue", "intercept", "slope", "stderr"]
-            #                      for i in [5, 10, 50]
-            #                      for f in ["max", "min", "mean", "var"]],
-            # @modified 20201230 - Branch #3908: v0.9.1
-            # Disabled augmented_dickey_fuller, number_crossing_m,
-            # energy_ratio_by_chunks and ratio_beyond_r_sigma added in v0.9.0
-            # "augmented_dickey_fuller": [{"attr": "teststat"}, {"attr": "pvalue"}, {"attr": "usedlag"}],
-            # "number_crossing_m": [{"m": 0}, {"m": -1}, {"m": 1}],
-            # "energy_ratio_by_chunks": [{"num_segments" : 10, "segment_focus": i} for i in range(10)],
-            # "ratio_beyond_r_sigma": [{"r": x} for x in [0.5, 1, 1.5, 2, 2.5, 3, 5, 6, 7, 10]],
-            # @modified 20201231 - Branch #3906: v0.12.1
-            # Disabled linear_trend_timewise introduced in v0.12.0
-            # "linear_trend_timewise": [{"attr": "pvalue"}, {"attr": "rvalue"}, {"attr": "intercept"},
-            #                  {"attr": "slope"}, {"attr": "stderr"}],
-			# @modified 20201231 - Branch #3920: v0.15.2
-			# Disabled count_above and count_below features that were added in v0.15.0
-            # "count_above": [{"t": 0}],
-            # "count_below": [{"t": 0}],
-			# @modified 20201231 - Branch #3924: v0.17.9
-			# Disabled lempel_ziv_complexity,fourier_entropy and permutation_entropy
-            # features that were added in v0.17.0
-            # "lempel_ziv_complexity": [{"bins": x} for x in [2, 3, 5, 10, 100]],
-            # "fourier_entropy":  [{"bins": x} for x in [2, 3, 5, 10, 100]],
-            # "permutation_entropy":  [{"tau": 1, "dimension": x} for x in [3, 4, 5, 6, 7]],
-        })
+        # @added 20230110 - Branch #4456 - v0.19.1
+        # Remove matrix_profile which was added in blueyonder/tsfresh-v0.18.0
+        # otherwise the tests/baseline/tsfresh_features_test.py in Skyline
+        # fail with KeyError: 'matrix_profile'
+        for exclude_feature in exclude_features:
+            if exclude_feature in list(name_to_param.keys()):
+                try:
+                    del name_to_param[exclude_feature]
+                    if exclude_feature == 'matrix_profile':
+                        _logger.info(
+                            f"{exclude_feature} not enabled in earthgecko/tsfresh-v0.19.1 removed from name_to_param, otherwise the tests/baseline/tsfresh_features_test.py in Skyline fail with KeyError: 'matrix_profile'"
+                        )
+                except Exception as err:
+                    if exclude_feature == 'matrix_profile':
+                        _logger.info(
+                            f"NOT REMOVED - {exclude_feature} not enabled in earthgecko/tsfresh-v0.19.1 not removed from name_to_param, otherwise the tests/baseline/tsfresh_features_test.py in Skyline fail with KeyError: 'matrix_profile' - {err}"
+                        )
+
+        name_to_param.update(
+            {
+                "time_reversal_asymmetry_statistic": [
+                    {"lag": lag} for lag in range(1, 4)
+                ],
+                # @modified 20201230 - Branch #3908: v0.9.1
+                # Disabled c3 added in v0.9.0
+                # "c3": [{"lag": lag} for lag in range(1, 4)],
+                # @modified 20201231 - Branch #3908: v0.11.3
+                # Disabled cid_ce added in v0.11.1
+                # "cid_ce": [{"normalize": True}, {"normalize": False}],
+                "symmetry_looking": [{"r": r * 0.05} for r in range(20)],
+                # @modified 20201230 - Branch #3908: v0.9.1
+                # Revert to original large_standard_deviation
+                # "large_standard_deviation": [{"r": r * 0.05} for r in range(1, 20)],
+                "large_standard_deviation": [{"r": r * 0.05} for r in range(10)],
+                "quantile": [
+                    {"q": q} for q in [0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9]
+                ],
+                "autocorrelation": [{"lag": lag} for lag in range(10)],
+                # @modified 20201230 - Branch #3908: v0.9.1
+                # Disabled agg_autocorrelation added in v0.9.0
+                # "agg_autocorrelation": [{"f_agg": s} for s in ["mean", "median", "var"]],
+                # @modified 20201231 - Branch #3908: v0.11.3
+                # Disabled Fix agg change made to agg_autocorrelation added in v0.11.
+                # https://github.com/blue-yonder/tsfresh/commit/a53fb6a1735a6c837f53da50344fc4a1b793d664
+                # "agg_autocorrelation": [{"f_agg": s, "maxlag": 40} for s in ["mean", "median", "var"]],
+                # @added 20230106 - Branch #4456 - v0.19.1
+                # Changed the already disabled agg_autocorrelation to the new format, still disabled
+                # "agg_autocorrelation": [
+                #     {"f_agg": s, "maxlag": 40} for s in ["mean", "median", "var"]
+                # ],
+                # @modified 20201230 - Branch #3910: v0.10.2
+                # Disabled partial_autocorrelation added in v0.10.0
+                # "partial_autocorrelation": [{"lag": lag} for lag in range(10)],
+                "number_cwt_peaks": [{"n": n} for n in [1, 5]],
+                # @modified 20201230 - Branch #3908: v0.9.1
+                # Revert to original number_peaks
+                # "number_peaks": [{"n": n} for n in [1, 3, 5, 10, 50]],
+                "number_peaks": [{"n": n} for n in [1, 3, 5]],
+                # @modified 20201230 - Branch #3908: v0.9.1
+                # Readded large_number_of_peaks
+                "large_number_of_peaks": [{"n": n} for n in [1, 3, 5]],
+                "binned_entropy": [{"max_bins": max_bins} for max_bins in [10]],
+                "index_mass_quantile": [
+                    {"q": q} for q in [0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9]
+                ],
+                "cwt_coefficients": [
+                    {"widths": width, "coeff": coeff, "w": w}
+                    for width in [(2, 5, 10, 20)]
+                    for coeff in range(15)
+                    for w in (2, 5, 10, 20)
+                ],
+                "spkt_welch_density": [{"coeff": coeff} for coeff in [2, 5, 8]],
+                # @modified 20201231 - Branch #3924: v0.17.9
+                # ar_coefficient changed range and format in blueyonder/tsfresh-v0.16.0
+                # maintaining range at 5 instead of (10 + 1)
+                # "ar_coefficient": [{"coeff": coeff, "k": k} for coeff in range(5) for k in [10]],
+                # "ar_coefficient": [
+                #     {"coeff": coeff, "k": k} for coeff in range(10 + 1) for k in [10]
+                # ],
+                "ar_coefficient": [
+                    {"coeff": coeff, "k": k} for coeff in range(5) for k in [10]
+                ],
+                # @modified 20201230 - Branch #3908: v0.9.1
+                # Revert to original mean_abs_change_quantiles
+                # "change_quantiles": [{"ql": ql, "qh": qh, "isabs": b, "f_agg": f}
+                #                               for ql in [0., .2, .4, .6, .8] for qh in [.2, .4, .6, .8, 1.]
+                #                               for b in [False, True] for f in ["mean", "var"]],
+                # @modified 20201231 - Branch #3916: v0.12.1
+                # Disabled new change_quantiles introduced in v0.12.0
+                # "change_quantiles": [{"ql": ql, "qh": qh, "isabs": b, "f_agg": f}
+                #                               for ql in [0., .2, .4, .6, .8] for qh in [.2, .4, .6, .8, 1.]
+                #                               for b in [False, True] for f in ["mean", "var"] if ql < qh],
+                # @added 20230106 - Branch #4456 - v0.19.1
+                # Added the newly formatted change_quantiles changed in blueyonder/tsfresh-v0.19.0
+                # still disabled
+                # "change_quantiles": [
+                #     {"ql": ql, "qh": qh, "isabs": b, "f_agg": f}
+                #     for ql in [0.0, 0.2, 0.4, 0.6, 0.8]
+                #     for qh in [0.2, 0.4, 0.6, 0.8, 1.0]
+                #     for b in [False, True]
+                #     for f in ["mean", "var"]
+                #     if ql < qh
+                # ],
+                "mean_abs_change_quantiles": [
+                    {"ql": ql, "qh": qh}
+                    for ql in [0.0, 0.2, 0.4, 0.6, 0.8]
+                    for qh in [0.2, 0.4, 0.6, 0.8, 1.0]
+                ],
+                # @modified 20201230 - Branch #3908: v0.9.1
+                # Revert to original fft_coefficient
+                # "fft_coefficient": [{"coeff": k, "attr": a} for a, k in product(["real", "imag", "abs", "angle"], range(100))],
+                "fft_coefficient": [{"coeff": coeff} for coeff in range(0, 10)],
+                # @modified 20201231 - Branch #3908: v0.11.3
+                # Disabled fft_aggregated added in v0.11.0
+                # "fft_aggregated": [{"aggtype": s} for s in ["centroid", "variance", "skew", "kurtosis"]],
+                # @modified 20201231 - Branch #3908: v0.11.3
+                # Changed to new value_count and range_count method
+                # "value_count": [{"value": value} for value in [0, 1, -1]],
+                # "range_count": [{"min": -1, "max": 1}, {"min": 1e12, "max": 0}, {"min": 0, "max": 1e12}
+                "value_count": [
+                    {"value": value} for value in [0, 1, np.NaN, np.PINF, np.NINF]
+                ],
+                "range_count": [{"min": -1, "max": 1}],
+                # @modified 20201231 - Branch #3908: v0.11.3
+                # Disabled to new value_count and range_count method added v0.13.0 use v0.11.1 version
+                # "value_count": [{"value": value} for value in [0, 1, -1]],
+                # "range_count": [{"min": -1, "max": 1}, {"min": 1e12, "max": 0}, {"min": 0, "max": 1e12}],
+                # @added 20230106 - Branch #4456 - v0.19.1
+                # Added the newly formatted range_count changed in blueyonder/tsfresh-v0.20.0
+                # still disabled and using v0.11.1 range_count above ^^
+                # "range_count": [
+                #     {"min": -1, "max": 1},
+                #     {"min": -1e12, "max": 0},
+                #     {"min": 0, "max": 1e12},
+                # ],
+                "approximate_entropy": [
+                    {"m": 2, "r": r} for r in [0.1, 0.3, 0.5, 0.7, 0.9]
+                ],
+                # @modified 20201230 - Branch #3902: v0.6.1
+                # Disabled friedrich_coefficients and max_langevin_fixed_point
+                # introduced in v0.6.0
+                # "friedrich_coefficients": (lambda m: [{"coeff": coeff, "m": m, "r": 30} for coeff in range(m + 1)])(3),
+                # "max_langevin_fixed_point": [{"m": 3, "r": 30}],
+                # @modified 20201230 - Branch #3906: v0.8.2
+                # Disabled linear_trend and agg_linear_trend introduced in v0.8.1
+                # "linear_trend": [{"attr": "pvalue"}, {"attr": "rvalue"}, {"attr": "intercept"},
+                #                  {"attr": "slope"}, {"attr": "stderr"}],
+                # "agg_linear_trend": [{"attr": attr, "chunk_len": i, "f_agg": f}
+                #                      for attr in ["rvalue", "intercept", "slope", "stderr"]
+                #                      for i in [5, 10, 50]
+                #                      for f in ["max", "min", "mean", "var"]],
+                # @modified 20201230 - Branch #3908: v0.9.1
+                # Disabled augmented_dickey_fuller, number_crossing_m,
+                # energy_ratio_by_chunks and ratio_beyond_r_sigma added in v0.9.0
+                # "augmented_dickey_fuller": [{"attr": "teststat"}, {"attr": "pvalue"}, {"attr": "usedlag"}],
+                # "number_crossing_m": [{"m": 0}, {"m": -1}, {"m": 1}],
+                # "energy_ratio_by_chunks": [{"num_segments" : 10, "segment_focus": i} for i in range(10)],
+                # "ratio_beyond_r_sigma": [{"r": x} for x in [0.5, 1, 1.5, 2, 2.5, 3, 5, 6, 7, 10]],
+                # @modified 20201231 - Branch #3906: v0.12.1
+                # Disabled linear_trend_timewise introduced in v0.12.0
+                # "linear_trend_timewise": [{"attr": "pvalue"}, {"attr": "rvalue"}, {"attr": "intercept"},
+                #                  {"attr": "slope"}, {"attr": "stderr"}],
+                # @modified 20201231 - Branch #3920: v0.15.2
+                # Disabled count_above and count_below features that were added in v0.15.0
+                # "count_above": [{"t": 0}],
+                # "count_below": [{"t": 0}],
+                # @modified 20201231 - Branch #3924: v0.17.9
+                # Disabled lempel_ziv_complexity,fourier_entropy and permutation_entropy
+                # features that were added in v0.17.0
+                # "lempel_ziv_complexity": [{"bins": x} for x in [2, 3, 5, 10, 100]],
+                # "fourier_entropy":  [{"bins": x} for x in [2, 3, 5, 10, 100]],
+                # "permutation_entropy":  [{"tau": 1, "dimension": x} for x in [3, 4, 5, 6, 7]],
+                # @added 20230106 - Branch #4456 - v0.19.1
+                # Added and disabled query_similarity_count added in blueyonder/tsfresh-v0.18.0
+                # "query_similarity_count": [{"query": None, "threshold": 0.0}],
+                # @added 20230106 - Branch #4456 - v0.19.1
+                # Added and disabled matrix_profile added in blueyonder/tsfresh-v0.18.0
+                # "matrix_profile": [
+                #     {"threshold": 0.98, "feature": f}
+                #     for f in ["min", "max", "mean", "median", "25", "75"]
+                # ],
+                # @added 20230106 - Branch #4456 - v0.19.1
+                # Added and disabled mean_n_absolute_max added in blueyonder/tsfresh-v0.19.0
+                # "mean_n_absolute_max": [
+                #     {
+                #         "number_of_maxima": 3,
+                #         "number_of_maxima": 5,
+                #         "number_of_maxima": 7,
+                #     }
+                # ],
+            }
+        )
+
+        # @added 20230106 - Branch #4456 - v0.19.1
+        # Added the remove missing dependencies check which was added in blueyonder/tsfresh-v0.20.0
+        # remove missing dependencies
+        for name, func in feature_calculators.__dict__.items():
+
+            # @added 20230110 - Branch #4456 - v0.19.1
+            # Remove matrix_profile which was added in blueyonder/tsfresh-v0.18.0
+            # otherwise the tests/baseline/tsfresh_features_test.py in Skyline
+            # fail with KeyError: 'matrix_profile'
+            # if name == 'matrix_profile':
+            #     try:
+            #         name_to_param.pop(name)
+            #     except:
+            #         pass
+            #     _logger.info(
+            #         f"matrix_profile not enabled in earthgecko/tsfresh-v0.19.1 otherwise the tests/baseline/tsfresh_features_test.py in Skyline fail with KeyError: 'matrix_profile'"
+            #     )
+            #     continue
+
+            # @added 20230110 - Branch #4456 - v0.19.1
+            # Remove matrix_profile which was added in blueyonder/tsfresh-v0.18.0
+            # otherwise the tests/baseline/tsfresh_features_test.py in Skyline
+            # fail with KeyError: 'matrix_profile'
+            if name in exclude_features:
+                for exclude_feature in exclude_features:
+                    if exclude_feature == name:
+                        try:
+                            del name_to_param[exclude_feature]
+                            if exclude_feature == 'matrix_profile':
+                                _logger.info(
+                                    f"{exclude_feature} not enabled in earthgecko/tsfresh-v0.19.1 removed from name_to_param, otherwise the tests/baseline/tsfresh_features_test.py in Skyline fail with KeyError: 'matrix_profile'"
+                                )
+                        except Exception as err:
+                            if exclude_feature == 'matrix_profile':
+                                _logger.info(
+                                    f"NOT REMOVED - {exclude_feature} not enabled in earthgecko/tsfresh-v0.19.1 not removed from name_to_param, otherwise the tests/baseline/tsfresh_features_test.py in Skyline fail with KeyError: 'matrix_profile' - {err}"
+                                )
+                        break
+                continue
+
+            if (
+                callable(func)
+                and hasattr(func, "dependency_available")
+                and getattr(func, "dependency_available") is False
+            ):
+                name_to_param.pop(name)
+                _logger.warning(
+                    f"Dependency not available for {name}, this feature will be disabled!"
+                )
 
         super().__init__(name_to_param)
 
@@ -239,7 +457,9 @@ class MinimalFCParameters(ComprehensiveFCParameters):
         ComprehensiveFCParameters.__init__(self)
 
         for fname, f in feature_calculators.__dict__.items():
-            if fname in self and (not hasattr(f, "minimal") or not getattr(f, "minimal")):
+            if fname in self and (
+                not hasattr(f, "minimal") or not getattr(f, "minimal")
+            ):
                 del self[fname]
 
 

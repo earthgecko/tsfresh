@@ -4,6 +4,76 @@ Changelog
 
 tsfresh uses `Semantic Versioning <http://semver.org/>`_
 
+Version 0.19.1 - earthgecko/tsfresh based on 
+==============
+
+- All the below changes from 0.18.0 to 0.20.0
+- black formatted earthgecko/tsfresh
+- Disabled new features - absolute_maximum, mean_n_absolute_max, matrix_profile,
+  query_similarity_count and root_mean_square
+
+Version 0.20.0
+==============
+
+- Breaking Change
+    - The matrixprofile package becomes an optional dependency
+
+- Bugfixes/Typos/Documentation:
+    - Fix feature extraction of Friedrich coefficients for pandas>1.3.5
+    - Fix file paths after example notebooks were moved
+
+Version 0.19.0
+==============
+
+- Breaking Change
+    - Drop Python 3.6 support due to dependency on statsmodels 0.13
+
+- Added Features
+    - Improve documentation (#831, #834, #851, #853, #870)
+    - Add absolute_maximum and mean_n_absolute_max features (#833)
+    - Make settings pickable (#845, #847, #910)
+    - Disable multiprocessing for `n_jobs=1` (#852)
+    - Add black, isort, and pre-commit (#876)
+
+- Bugfixes/Typos/Documentation:
+    - Fix conversion of time-series into sequence for lempel_ziv_complexity (#806)
+    - Fix range count config (#827)
+    - Reword documentation (#893)
+    - Fix statsmodels deprecation issues (#898, #912)
+    - Fix typo in requirements (#903)
+    - Bump statsmodels to v0.13 (#
+    - Updated references
+
+
+Version 0.18.0
+==============
+
+- Added Features
+    - Allow arbitrary rolling sizes (#766)
+    - Allow for multiclass significance tests (#762)
+    - Add multiclass option to RelevantFeatureAugmenter (#782)
+    - Addition of matrix_profile feature (#793)
+    - Added new query similarity counter feature (#798)
+    - Add root mean square feature (#813)
+- Bugfixes/Typos/Documentation:
+    - Do not send coverage of notebook tests to codecov (#759)
+    - Fix typos in notebook (#757, #780)
+    - Fix output format of `make_forecasting_frame` (#758)
+    - Fix badges and remove benchmark test
+    - Fix BY notebook plot (#760)
+    - Ts forecast example improvement (#763)
+    - Also surpress warnings in dask (#769)
+    - Update relevant_feature_augmenter.py (#779)
+    - Fix column names in quick_start.rst (#778)
+    - Improve relevance table function documentation (#781)
+    - Fixed #789 Typo in "how to add custom feature" (#790)
+    - Convert to the correct type on warnings (#799)
+    - Fix minor typos in the docs (#802)
+    - Add unwanted filetypes to gitignore (#819)
+    - Fix build and test failures (#815)
+    - Fix imputing docu (#800)
+    - Bump the scikit-learn version (#822)
+
 Version 0.17.9
 ==============
 
