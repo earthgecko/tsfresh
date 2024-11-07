@@ -29,6 +29,7 @@ A features profile calculated with earthgecko/tsfresh v0.4.0 should be the same 
 Version mappings to which blueyonder/tsfresh the earthgecko/tsfresh version is based on:
 blueyonder/tsfresh-v0.17.1 -> earthgecko/tsfresh-v0-17.9
 blueyonder/tsfresh-v0.20.0 -> earthgecko/tsfresh-v0-19.1
+blueyonder/tsfresh-v0.20.3 -> earthgecko/tsfresh-v0-20.3-skyline
 
 It must be noted that the results of the features calculations will change in decimal precision or decimal values
 between Python versions, library versions and even machines.  These changes are acceptable from a Skyline perspective and are
@@ -48,7 +49,6 @@ of theses branches.
 [![Build Status](https://github.com/blue-yonder/tsfresh/workflows/Test%20Default%20Branch/badge.svg)](https://github.com/blue-yonder/tsfresh/actions)
 [![codecov](https://codecov.io/gh/blue-yonder/tsfresh/branch/main/graph/badge.svg)](https://codecov.io/gh/blue-yonder/tsfresh)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/blue-yonder/tsfresh/blob/main/LICENSE.txt)
-[![py36 status](https://img.shields.io/badge/python3.6.10-supported-green.svg)](https://github.com/blue-yonder/tsfresh/issues/8)
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/blue-yonder/tsfresh/main?filepath=notebooks)
 [![Downloads](https://pepy.tech/badge/tsfresh)](https://pepy.tech/project/tsfresh)
 

@@ -91,7 +91,7 @@ def impute_dataframe_zero(df_impute):
     if len(df_impute) == 0:
         return df_impute
 
-    df_impute.replace([np.PINF, np.NINF], 0, inplace=True)
+    df_impute.replace([np.inf, -np.inf], 0, inplace=True)
     df_impute.fillna(0, inplace=True)
 
     # Ensure a type of "np.float64"
@@ -165,8 +165,8 @@ def impute_dataframe_range(df_impute, col_to_max, col_to_min, col_to_median):
         [col_to_median] * len(df_impute), index=df_impute.index
     )
 
-    df_impute.where(df_impute.values != np.PINF, other=col_to_max, inplace=True)
-    df_impute.where(df_impute.values != np.NINF, other=col_to_min, inplace=True)
+    df_impute.where(df_impute.values != np.inf, other=col_to_max, inplace=True)
+    df_impute.where(df_impute.values != -np.inf, other=col_to_min, inplace=True)
     df_impute.where(~np.isnan(df_impute.values), other=col_to_median, inplace=True)
 
     df_impute.astype(np.float64, copy=False)
@@ -506,7 +506,7 @@ def roll_time_series(
 
         df = df.sort_values(column_sort)
 
-        if df[column_sort].dtype != np.object:
+        if df[column_sort].dtype != object:
             # if rolling is enabled, the data should be uniformly sampled in this column
             # Build the differences between consecutive time sort values
 

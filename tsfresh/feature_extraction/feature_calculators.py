@@ -156,7 +156,10 @@ def _estimate_friedrich_coefficients(x, m, r):
     try:
         df["quantiles"] = pd.qcut(df.signal, r)
     except (ValueError, IndexError):
-        return [np.NaN] * (m + 1)
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#        return [np.NaN] * (m + 1)
+        return [np.nan] * (m + 1)
 
     quantiles = df.groupby("quantiles")
 
@@ -168,7 +171,10 @@ def _estimate_friedrich_coefficients(x, m, r):
     try:
         return np.polyfit(result.x_mean, result.y_mean, deg=m)
     except (np.linalg.LinAlgError, ValueError):
-        return [np.NaN] * (m + 1)
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#        return [np.NaN] * (m + 1)
+        return [np.nan] * (m + 1)
 
 
 def _aggregate_on_chunks(x, f_agg, chunk_len):
@@ -338,7 +344,7 @@ def symmetry_looking(x, param):
     :param param: contains dictionaries {"r": x} with x (float) is the percentage of the range to compare with
     :type param: list
     :return: the value of this feature
-    :return type: bool
+    :return type: List[Tuple[str, bool]]
     """
     if not isinstance(x, (np.ndarray, pd.Series)):
         x = np.asarray(x)
@@ -492,7 +498,7 @@ def agg_autocorrelation(x, param):
                   autocorrelations. Further, n is an int and the maximal number of lags to consider.
     :type param: list
     :return: the value of this feature
-    :return type: float
+    :return type: List[Tuple[str, float]]
     """
     # if the time series is longer than the following threshold, we use fft to calculate the acf
     THRESHOLD_TO_USE_FFT = 1250
@@ -551,7 +557,7 @@ def partial_autocorrelation(x, param):
     :param param: contains dictionaries {"lag": val} with int val indicating the lag to be returned
     :type param: list
     :return: the value of this feature
-    :return type: float
+    :return type: List[Tuple[str, float]]
     """
     # Check the difference between demanded lags by param and possible lags to calculate (depends on len(x))
     max_demanded_lag = max([lag["lag"] for lag in param])
@@ -595,10 +601,15 @@ def augmented_dickey_fuller(x):
     try:
         return adfuller(x)[0]
     except LinAlgError:
-        return np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#        return np.NaN
+        return np.nan
     except ValueError:  # occurs if sample size is too small
-        return np.NaN
-
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#        return np.NaN
+        return np.nan
 
 @set_property("fctype", "combiner")
 # @modified 20201230 - Branch #3908: v0.9.1
@@ -626,11 +637,20 @@ def v090_augmented_dickey_fuller(x, param):
         try:
             return adfuller(x, autolag=autolag)
         except LinAlgError:
-            return np.NaN, np.NaN, np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#            return np.NaN, np.NaN, np.NaN
+            return np.nan, np.nan, np.nan
         except ValueError:  # occurs if sample size is too small
-            return np.NaN, np.NaN, np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#            return np.NaN, np.NaN, np.NaN
+            return np.nan, np.nan, np.nan
         except MissingDataError:  # is thrown for e.g. inf or nan in the data
-            return np.NaN, np.NaN, np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#            return np.NaN, np.NaN, np.NaN
+            return np.nan, np.nan, np.nan
 
     res = []
     for config in param:
@@ -646,7 +666,10 @@ def v090_augmented_dickey_fuller(x, param):
         elif config["attr"] == "usedlag":
             res.append((index, adf[2]))
         else:
-            res.append((index, np.NaN))
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#            res.append((index, np.NaN))
+            res.append((index, np.nan))
     return res
 
 
@@ -743,7 +766,10 @@ def mean_change(x):
     :return type: float
     """
     x = np.asarray(x)
-    return (x[-1] - x[0]) / (len(x) - 1) if len(x) > 1 else np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#    return (x[-1] - x[0]) / (len(x) - 1) if len(x) > 1 else np.NaN
+    return (x[-1] - x[0]) / (len(x) - 1) if len(x) > 1 else np.nan
 
 
 @set_property("fctype", "simple")
@@ -764,7 +790,10 @@ def mean_second_derivate_central(x):
     :return type: float
     """
     x = np.asarray(x)
-    return (x[-1] - x[-2] - x[1] + x[0]) / (2 * (len(x) - 2)) if len(x) > 2 else np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#    return (x[-1] - x[-2] - x[1] + x[0]) / (2 * (len(x) - 2)) if len(x) > 2 else np.NaN
+    return (x[-1] - x[-2] - x[1] + x[0]) / (2 * (len(x) - 2)) if len(x) > 2 else np.nan
 
 
 @set_property("fctype", "simple")
@@ -870,6 +899,23 @@ def skewness(x):
     """
     if not isinstance(x, pd.Series):
         x = pd.Series(x)
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# Maintain original implementation
+# The pandas function in use here skips nan by default
+# a change was made in v0.20.3 to this skewness by adding
+# skipna=False, introducing this change would result in all
+# previous features profiles calculated that did any nan/None
+# values in them having a result of nan from pandas.  All features
+# profiles have a value for skewness (feature_id 15)
+# blue-yonder/tsfresh notes regarding the issue
+# Update tsfresh.feature_extraction.feature_calculators.skewness to make it consistent with the design principle of not ignoring nan (#1066)
+# https://github.com/blue-yonder/tsfresh/pull/1051
+# This is because NOT silently dropping nans is a tsfresh design design as highlighted in
+# https://github.com/blue-yonder/tsfresh/issues/90
+# > This was a design decision. tsfresh will not tinker with the input time series data by for example imputing values or dropping NAs.
+# > Reason behind this: In data science projects, NAs should be handled with special care, often they contain a lot of information.
+# > We don't want our packages to silently remove those informations by dropping it. This is way we are not imputing the input data.
+#    return pd.Series.skew(x, skipna=False)  # v0.20.3
     return pd.Series.skew(x)
 
 
@@ -902,8 +948,10 @@ def kurtosis(x):
 #     :return: the value of this feature
 #     :return type: float
 #     """
-#     return np.sqrt(np.mean(np.square(x))) if len(x) > 0 else np.NaN
-
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+##     return np.sqrt(np.mean(np.square(x))) if len(x) > 0 else np.NaN
+#     return np.sqrt(np.mean(np.square(x))) if len(x) > 0 else np.nan
 
 @set_property("fctype", "simple")
 def absolute_sum_of_changes(x):
@@ -992,7 +1040,10 @@ def last_location_of_maximum(x):
     :return type: float
     """
     x = np.asarray(x)
-    return 1.0 - np.argmax(x[::-1]) / len(x) if len(x) > 0 else np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#    return 1.0 - np.argmax(x[::-1]) / len(x) if len(x) > 0 else np.NaN
+    return 1.0 - np.argmax(x[::-1]) / len(x) if len(x) > 0 else np.nan
 
 
 @set_property("fctype", "simple")
@@ -1008,7 +1059,10 @@ def first_location_of_maximum(x):
     """
     if not isinstance(x, (np.ndarray, pd.Series)):
         x = np.asarray(x)
-    return np.argmax(x) / len(x) if len(x) > 0 else np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#    return np.argmax(x) / len(x) if len(x) > 0 else np.NaN
+    return np.argmax(x) / len(x) if len(x) > 0 else np.nan
 
 
 @set_property("fctype", "simple")
@@ -1023,7 +1077,10 @@ def last_location_of_minimum(x):
     :return type: float
     """
     x = np.asarray(x)
-    return 1.0 - np.argmin(x[::-1]) / len(x) if len(x) > 0 else np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#    return 1.0 - np.argmin(x[::-1]) / len(x) if len(x) > 0 else np.NaN
+    return 1.0 - np.argmin(x[::-1]) / len(x) if len(x) > 0 else np.nan
 
 
 @set_property("fctype", "simple")
@@ -1039,7 +1096,10 @@ def first_location_of_minimum(x):
     """
     if not isinstance(x, (np.ndarray, pd.Series)):
         x = np.asarray(x)
-    return np.argmin(x) / len(x) if len(x) > 0 else np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#    return np.argmin(x) / len(x) if len(x) > 0 else np.NaN
+    return np.argmin(x) / len(x) if len(x) > 0 else np.nan
 
 
 # @added 20201231 - Branch #3924: v0.17.9
@@ -1354,7 +1414,7 @@ def v090_fft_coefficient(x, param):
         "abs", "angle"]
     :type param: list
     :return: the different feature values
-    :return type: pandas.Series
+    :return type: Iterator[Tuple[str, float]]
     """
 
     assert (
@@ -1382,7 +1442,10 @@ def v090_fft_coefficient(x, param):
     res = [
         complex_agg(fft[config["coeff"]], config["attr"])
         if config["coeff"] < len(fft)
-        else np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#        else np.NaN
+        else np.nan
         for config in param
     ]
     index = [
@@ -1403,7 +1466,7 @@ def fft_aggregated(x, param):
         "skew", "kurtosis"]
     :type param: list
     :return: the different feature values
-    :return type: pandas.Series
+    :return type: Iterator[Tuple[str, float]]
     """
 
     assert {config["aggtype"] for config in param} <= {
@@ -1555,7 +1618,7 @@ def index_mass_quantile(x, param):
     :param param: contains dictionaries {"q": x} with x float
     :type param: list
     :return: the different feature values
-    :return type: pandas.Series
+    :return type: List[Tuple[str, float]]
     """
 
     x = np.asarray(x)
@@ -1564,7 +1627,10 @@ def index_mass_quantile(x, param):
 
     if s == 0:
         # all values in x are zero or it has length 0
-        return [("q_{}".format(config["q"]), np.NaN) for config in param]
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#        return [("q_{}".format(config["q"]), np.NaN) for config in param]
+        return [("q_{}".format(config["q"]), np.nan) for config in param]
     else:
         # at least one value is not zero
         mass_centralized = np.cumsum(abs_x) / s
@@ -1614,7 +1680,7 @@ def linear_trend(x, param):
     :param param: contains dictionaries {"attr": x} with x an string, the attribute name of the regression model
     :type param: list
     :return: the different feature values
-    :return type: pandas.Series
+    :return type: List[Tuple[str, float]]
     """
     # todo: we could use the index of the DataFrame here
     linReg = linregress(range(len(x)), x)
@@ -1645,7 +1711,7 @@ def cwt_coefficients(x, param):
     :param param: contains dictionaries {"widths":x, "coeff": y, "w": z} with x array of int and y,z int
     :type param: list
     :return: the different feature values
-    :return type: pandas.Series
+    :return type: Iterator[Tuple[str, float]]
     """
 
     calculated_cwt = {}
@@ -1669,7 +1735,10 @@ def cwt_coefficients(x, param):
 
         i = widths.index(w)
         if calculated_cwt_for_widths.shape[1] <= coeff:
-            res += [np.NaN]
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#            res += [np.NaN]
+            res += [np.nan]
         else:
             res += [calculated_cwt_for_widths[i, coeff]]
 
@@ -1689,7 +1758,7 @@ def spkt_welch_density(x, param):
     :param param: contains dictionaries {"coeff": x} with x int
     :type param: list
     :return: the different feature values
-    :return type: pandas.Series
+    :return type: Iterator[Tuple[str, float]]
     """
 
     freq, pxx = welch(x, nperseg=min(len(x), 256))
@@ -1709,7 +1778,10 @@ def spkt_welch_density(x, param):
         # Fill up the rest of the requested coefficients with np.NaNs
         return zip(
             indices,
-            list(pxx[reduced_coeff]) + [np.NaN] * len(not_calculated_coefficients),
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#            list(pxx[reduced_coeff]) + [np.NaN] * len(not_calculated_coefficients),
+            list(pxx[reduced_coeff]) + [np.nan] * len(not_calculated_coefficients),
         )
     else:
         return zip(indices, pxx[coeff])
@@ -1734,7 +1806,7 @@ def ar_coefficient(x, param):
     :param param: contains dictionaries {"coeff": x, "k": y} with x,y int
     :type param: list
     :return x: the different feature values
-    :return type: pandas.Series
+    :return type: List[Tuple[str, float]]
     """
     calculated_ar_params = {}
 
@@ -1763,7 +1835,10 @@ def ar_coefficient(x, param):
                 calculated_ar_params[k] = calculated_AR.fit().params
             # except (LinAlgError, ValueError):
             except (ZeroDivisionError, LinAlgError, ValueError):
-                calculated_ar_params[k] = [np.NaN] * k
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#                calculated_ar_params[k] = [np.NaN] * k
+                calculated_ar_params[k] = [np.nan] * k
 
         mod = calculated_ar_params[k]
         if p <= k:
@@ -1772,7 +1847,10 @@ def ar_coefficient(x, param):
             except IndexError:
                 res[column_name] = 0
         else:
-            res[column_name] = np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#            res[column_name] = np.NaN
+            res[column_name] = np.nan
 
     return [(key, value) for key, value in res.items()]
 
@@ -1868,6 +1946,8 @@ def change_quantiles(x, ql, qh, isabs, f_agg):
 @set_property("fctype", "simple")
 def time_reversal_asymmetry_statistic(x, lag):
     """
+    Returns the time reversal asymmetry statistic.
+
     This function calculates the value of
 
     .. math::
@@ -1920,6 +2000,8 @@ def time_reversal_asymmetry_statistic(x, lag):
 # def time_reversal_asymmetry_statistic(x, lag):
 def v090_time_reversal_asymmetry_statistic(x, lag):
     """
+    Returns the time reversal asymmetry statistic.
+
     This function calculates the value of
 
     .. math::
@@ -2024,7 +2106,10 @@ def c3(x, lag):
 #
 #    n_absolute_maximum_values = np.sort(np.absolute(x))[-number_of_maxima:]
 #
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
 #    return np.mean(n_absolute_maximum_values) if len(x) > number_of_maxima else np.NaN
+#    return np.mean(n_absolute_maximum_values) if len(x) > number_of_maxima else np.nan
 
 
 @set_property("fctype", "simple")
@@ -2411,7 +2496,10 @@ def v090_autocorrelation(x, lag):
     # Return the normalized unbiased covariance
     v = np.var(x)
     if np.isclose(v, 0):
-        return np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#        return np.NaN
+        return np.nan
     else:
         return sum_product / ((len(x) - lag) * v)
 
@@ -2429,7 +2517,10 @@ def quantile(x, q):
     :return type: float
     """
     if len(x) == 0:
-        return np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#        return np.NaN
+        return np.nan
     return np.quantile(x, q)
 
 
@@ -2483,7 +2574,10 @@ def v0190_absolute_maximum(x):
     :return: the value of this feature
     :return type: float
     """
-    return np.max(np.absolute(x)) if len(x) > 0 else np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#    return np.max(np.absolute(x)) if len(x) > 0 else np.NaN
+    return np.max(np.absolute(x)) if len(x) > 0 else np.nan
 
 
 @set_property("fctype", "simple")
@@ -2599,7 +2693,7 @@ def friedrich_coefficients(x, param):
                   a positive integer corresponding to the returned coefficient
     :type param: list
     :return: the different feature values
-    :return type: pandas.Series
+    :return type: List[Tuple[str, float]]
     """
     # calculated is dictionary storing the calculated coefficients {m: {r: friedrich_coefficients}}
     calculated = defaultdict(dict)
@@ -2622,7 +2716,10 @@ def friedrich_coefficients(x, param):
         try:
             res["coeff_{}__m_{}__r_{}".format(coeff, m, r)] = calculated[m][r][coeff]
         except IndexError:
-            res["coeff_{}__m_{}__r_{}".format(coeff, m, r)] = np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#            res["coeff_{}__m_{}__r_{}".format(coeff, m, r)] = np.NaN
+            res["coeff_{}__m_{}__r_{}".format(coeff, m, r)] = np.nan
     return [(key, value) for key, value in res.items()]
 
 
@@ -2683,7 +2780,7 @@ def agg_linear_trend(x, param):
     :param param: contains dictionaries {"attr": x, "chunk_len": l, "f_agg": f} with x, f an string and l an int
     :type param: list
     :return: the different feature values
-    :return type: pandas.Series
+    :return type: Iterator[Tuple[str, float]]
     """
     # todo: we could use the index of the DataFrame here
 
@@ -2698,7 +2795,10 @@ def agg_linear_trend(x, param):
 
         if f_agg not in calculated_agg or chunk_len not in calculated_agg[f_agg]:
             if chunk_len >= len(x):
-                calculated_agg[f_agg][chunk_len] = np.NaN
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#                calculated_agg[f_agg][chunk_len] = np.NaN
+                calculated_agg[f_agg][chunk_len] = np.nan
             else:
                 aggregate_result = _aggregate_on_chunks(x, f_agg, chunk_len)
                 lin_reg_result = linregress(
@@ -2709,7 +2809,10 @@ def agg_linear_trend(x, param):
         attr = parameter_combination["attr"]
 
         if chunk_len >= len(x):
-            res_data.append(np.NaN)
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#            res_data.append(np.NaN)
+            res_data.append(np.nan)
         else:
             res_data.append(getattr(calculated_agg[f_agg][chunk_len], attr))
 
@@ -2740,11 +2843,11 @@ def energy_ratio_by_chunks(x, param):
     :type x: numpy.ndarray
     :param param: contains dictionaries {"num_segments": N, "segment_focus": i} with N, i both ints
     :return: the feature values
-    :return type: list of tuples (index, data)
+    :return type: List[Tuple[str, float]]
     """
     res_data = []
     res_index = []
-    full_series_energy = np.sum(x ** 2)
+    full_series_energy = np.sum(x**2)
 
     for parameter_combination in param:
         num_segments = parameter_combination["num_segments"]
@@ -2753,7 +2856,10 @@ def energy_ratio_by_chunks(x, param):
         assert num_segments > 0
 
         if full_series_energy == 0:
-            res_data.append(np.NaN)
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 NaN deprecated
+#            res_data.append(np.NaN)
+            res_data.append(np.nan)
         else:
             res_data.append(
                 np.sum(np.array_split(x, num_segments)[segment_focus] ** 2.0)
@@ -2787,7 +2893,7 @@ def linear_trend_timewise(x, param):
     :param param: contains dictionaries {"attr": x} with x an string, the attribute name of the regression model
     :type param: list
     :return: the different feature values
-    :return type: list
+    :return type: List[Tuple[str, float]]
     """
     ix = x.index
 
@@ -2946,7 +3052,7 @@ def matrix_profile(x, param):
                   and decides which feature of the matrix profile to extract
     :type param: list
     :return: the different feature values
-    :return type: pandas.Series
+    :return type: List[Tuple[str, float]]
     """
     if mp is None:
         raise ImportError(
@@ -3041,7 +3147,7 @@ def query_similarity_count(x, param):
                   `norm` (bool) to `False.
     :type param: list
     :return x: the different feature values
-    :return type: int
+    :return type: List[Tuple[str, int | np.nan]]
     """
     res = {}
     T = np.asarray(x).astype(float)

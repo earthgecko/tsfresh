@@ -183,7 +183,6 @@ class ComprehensiveFCParameters(PickableSettings):
         ]
 
         for name, func in feature_calculators.__dict__.items():
-
             if (
                 callable(func)
                 and hasattr(func, "fctype")
@@ -311,7 +310,10 @@ class ComprehensiveFCParameters(PickableSettings):
                 # "value_count": [{"value": value} for value in [0, 1, -1]],
                 # "range_count": [{"min": -1, "max": 1}, {"min": 1e12, "max": 0}, {"min": 0, "max": 1e12}
                 "value_count": [
-                    {"value": value} for value in [0, 1, np.NaN, np.PINF, np.NINF]
+# @modified 20241105 - Branch #5534: v0.20.3-skyline
+# numpy 2 deprecations
+#                    {"value": value} for value in [0, 1, np.NaN, np.PINF, np.NINF]
+                    {"value": value} for value in [0, 1, np.nan, np.inf, -np.inf]
                 ],
                 "range_count": [{"min": -1, "max": 1}],
                 # @modified 20201231 - Branch #3908: v0.11.3

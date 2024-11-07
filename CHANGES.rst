@@ -4,6 +4,50 @@ Changelog
 
 tsfresh uses `Semantic Versioning <http://semver.org/>`_
 
+Version 0.20.3-skyline - earthgecko/tsfresh based on blue-yonder/tsfresh-v0.20.3
+================================================================================
+
+- Modified for numpy >= 2.0
+- Retain original skewness method and do not use skipna=False introduced in v0.20.3
+  which results in any time series with a nan/None value have a skewness result of
+  nan.  Previously all features profiles had a value for skewness, implementing
+  skipna=False would result in all the features profiles that were calculated for
+  a time series with nan/None values have a different features_profile_sum.
+
+Version 0.20.3
+==============
+- Bugfixes/Typos/Documentation:
+    * Fixes issue #1073: Updated setup.cfg to require newer scipy version (#1081)
+    * extract_relevant_features now passes chunksize to extract_features (#1083)
+    * Fix code and tests for numpy >= 2.0 (#1085)
+    * Update tsfresh.feature_extraction.feature_calculators.skewness to make it consistent with the design principle of not ignoring nan (#1066)
+    * Fix spelling/grammar in pipeline notebook (#1082)
+    * Added recommendation to revert thread limitations (#1069)
+    * Fix the 01 example notebook to not leak information between train and test set
+    * Feature calculator return type documentation (#1070)
+
+Version 0.20.2
+==============
+- Added Features
+    -  Make Dask and Distributed optional dependencies (#1061)
+    - View and Set N Jobs (#1029)
+
+- Bugfixes/Typos/Documentation:
+    - Extra notes on parallelization efficiencies (#1046)
+    - Update doc extraction settings for clarity and formatting (#1033)
+    - Typos (#1031, #1034, #1049, #1048)
+
+Version 0.20.1
+==============
+
+- Added Features
+    - Make tsfresh compatible with numpy 1.24 (#1018) and pandas 2.0 (#1028)
+
+- Bugfixes/Typos/Documentation:
+    - Use pandas Index.equals in check_if_pandas_series (#963)
+    - Updates to package layout, CI/CD and developer setup
+
+
 Version 0.19.1 - earthgecko/tsfresh based on 
 ==============
 
