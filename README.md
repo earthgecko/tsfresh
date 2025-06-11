@@ -30,6 +30,7 @@ Version mappings to which blueyonder/tsfresh the earthgecko/tsfresh version is b
 blueyonder/tsfresh-v0.17.1 -> earthgecko/tsfresh-v0-17.9
 blueyonder/tsfresh-v0.20.0 -> earthgecko/tsfresh-v0-19.1
 blueyonder/tsfresh-v0.20.3 -> earthgecko/tsfresh-v0-20.3-skyline
+blueyonder/tsfresh-v0.21.0 -> earthgecko/tsfresh-v0-21.9
 
 It must be noted that the results of the features calculations will change in decimal precision or decimal values
 between Python versions, library versions and even machines.  These changes are acceptable from a Skyline perspective and are

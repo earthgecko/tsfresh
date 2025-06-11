@@ -22,12 +22,20 @@ import itertools
 import warnings
 from builtins import range
 from collections import defaultdict
+from typing import Literal
 
 import numpy as np
 import pandas as pd
+
+# @added 20250611 - Branch #5630: v0.21.9
+# cwt deprecated in scipy.signals
+import pywt
+
 import stumpy
 from numpy.linalg import LinAlgError
-from scipy.signal import cwt, find_peaks_cwt, ricker, welch
+# @modified 20250611 - Branch #5630: v0.21.9
+#from scipy.signal import cwt, find_peaks_cwt, welch
+from scipy.signal import find_peaks_cwt, welch
 from scipy.stats import linregress
 from statsmodels.tools.sm_exceptions import MissingDataError
 from statsmodels.tsa.ar_model import AutoReg
@@ -121,9 +129,9 @@ def _get_length_sequences_where(x):
     """
     if len(x) == 0:
         return [0]
-    else:
-        res = [len(list(group)) for value, group in itertools.groupby(x) if value == 1]
-        return res if len(res) > 0 else [0]
+
+    res = [len(list(group)) for value, group in itertools.groupby(x) if value == 1]
+    return res if len(res) > 0 else [0]
 
 
 def _estimate_friedrich_coefficients(x, m, r):
@@ -150,7 +158,7 @@ def _estimate_friedrich_coefficients(x, m, r):
     :return: coefficients of polynomial of deterministic dynamics
     :return type: ndarray
     """
-    assert m > 0, "Order of polynomial need to be positive integer, found {}".format(m)
+    assert m > 0, f"Order of polynomial need to be positive integer, found {m}"
 
     df = pd.DataFrame({"signal": x[:-1], "delta": np.diff(x)})
     try:
@@ -351,7 +359,8 @@ def symmetry_looking(x, param):
     mean_median_difference = np.abs(np.mean(x) - np.median(x))
     max_min_difference = np.max(x) - np.min(x)
     return [
-        ("r_{}".format(r["r"]), mean_median_difference < (r["r"] * max_min_difference))
+#        ("r_{}".format(r["r"]), mean_median_difference < (r["r"] * max_min_difference))
+        (f"r_{r['r']}", mean_median_difference < (r["r"] * max_min_difference))
         for r in param
     ]
 
@@ -506,7 +515,9 @@ def agg_autocorrelation(x, param):
     n = len(x)
     max_maxlag = max([config["maxlag"] for config in param])
 
-    if np.abs(var) < 10 ** -10 or n == 1:
+# @modified 20250611 - Branch #5630: v0.21.9
+#    if np.abs(var) < 10 ** -10 or n == 1:
+    if np.abs(var) < 10**-10 or n == 1:
         a = [0] * len(x)
     else:
         # @modified 20230105 - Branch #4456 - v0.19.1
@@ -516,7 +527,9 @@ def agg_autocorrelation(x, param):
         a = acf(x, adjusted=True, fft=n > THRESHOLD_TO_USE_FFT, nlags=max_maxlag)[1:]
     return [
         (
-            'f_agg_"{}"__maxlag_{}'.format(config["f_agg"], config["maxlag"]),
+# @modified 20250611 - Branch #5630: v0.21.9
+#            'f_agg_"{}"__maxlag_{}'.format(config["f_agg"], config["maxlag"]),
+            f'f_agg_"{config["f_agg"]}"__maxlag_{config["maxlag"]}',
             getattr(np, config["f_agg"])(a[: int(config["maxlag"])]),
         )
         for config in param
@@ -579,7 +592,9 @@ def partial_autocorrelation(x, param):
         else:
             pacf_coeffs = [np.nan] * (max_demanded_lag + 1)
 
-    return [("lag_{}".format(lag["lag"]), pacf_coeffs[lag["lag"]]) for lag in param]
+# @modified 20250611 - Branch #5630: v0.21.9
+#    return [("lag_{}".format(lag["lag"]), pacf_coeffs[lag["lag"]]) for lag in param]
+    return [(f"lag_{lag['lag']}", pacf_coeffs[lag["lag"]]) for lag in param]
 
 
 # @added 20201230 - Branch #3908: v0.9.1
@@ -617,6 +632,8 @@ def augmented_dickey_fuller(x):
 # def augmented_dickey_fuller(x, param):
 def v090_augmented_dickey_fuller(x, param):
     """
+    Does the time series have a unit root?
+
     The Augmented Dickey-Fuller test is a hypothesis test which checks whether a unit root is present in a time
     series sample. This feature calculator returns the value of the respective test statistic.
 
@@ -629,7 +646,7 @@ def v090_augmented_dickey_fuller(x, param):
                   statsmodels).
     :type param: list
     :return: the value of this feature
-    :return type: float
+    :return type: List[Tuple[str, float]]
     """
 
     @functools.lru_cache()
@@ -657,7 +674,9 @@ def v090_augmented_dickey_fuller(x, param):
         autolag = config.get("autolag", "AIC")
 
         adf = compute_adf(autolag)
-        index = 'attr_"{}"__autolag_"{}"'.format(config["attr"], autolag)
+# @modified 20250611 - Branch #5630: v0.21.9
+#        index = 'attr_"{}"__autolag_"{}"'.format(config["attr"], autolag)
+        index = f'attr_"{config["attr"]}"__autolag_"{autolag}"'
 
         if config["attr"] == "teststat":
             res.append((index, adf[0]))
@@ -1418,7 +1437,7 @@ def v090_fft_coefficient(x, param):
     """
 
     assert (
-        min([config["coeff"] for config in param]) >= 0
+        min((config["coeff"] for config in param)) >= 0
     ), "Coefficients must be positive or zero."
     assert {config["attr"] for config in param} <= {
         "imag",
@@ -1429,7 +1448,7 @@ def v090_fft_coefficient(x, param):
 
     fft = np.fft.rfft(x)
 
-    def complex_agg(x, agg):
+    def complex_agg(x, agg: Literal["real", "imag", "angle", "abs"]):
         if agg == "real":
             return x.real
         elif agg == "imag":
@@ -1438,6 +1457,8 @@ def v090_fft_coefficient(x, param):
             return np.abs(x)
         elif agg == "angle":
             return np.angle(x, deg=True)
+        else:
+            raise ValueError('`agg` must be "real", "imag", "angle" or "abs"')
 
     res = [
         complex_agg(fft[config["coeff"]], config["attr"])
@@ -1448,10 +1469,7 @@ def v090_fft_coefficient(x, param):
         else np.nan
         for config in param
     ]
-    index = [
-        'attr_"{}"__coeff_{}'.format(config["attr"], config["coeff"])
-        for config in param
-    ]
+    index = [f'attr_"{config["attr"]}"__coeff_{config["coeff"]}' for config in param]
     return zip(index, res)
 
 
@@ -1519,15 +1537,25 @@ def fft_aggregated(x, param):
         :return type: float
         """
 
-        variance = get_variance(y)
+# @modified 20250611 - Branch #5630: v0.21.9
+# Variable changed from variance to var
+#        variance = get_variance(y)
+        var = get_variance(y)
         # In the limit of a dirac delta, skew should be 0 and variance 0.  However, in the discrete limit,
         # the skew blows up as variance --> 0, hence return nan when variance is smaller than a resolution of 0.5:
-        if variance < 0.5:
+# @modified 20250611 - Branch #5630: v0.21.9
+#        if variance < 0.5:
+        if var < 0.5:
             return np.nan
-        else:
-            return (
-                get_moment(y, 3) - 3 * get_centroid(y) * variance - get_centroid(y) ** 3
-            ) / get_variance(y) ** (1.5)
+# @modified 20250611 - Branch #5630: v0.21.9
+#        else:
+#            return (
+#                get_moment(y, 3) - 3 * get_centroid(y) * variance - get_centroid(y) ** 3
+#            ) / get_variance(y) ** (1.5)
+        centroid = get_centroid(y)
+        return (get_moment(y, 3) - 3 * centroid * var - centroid**3) / get_variance(
+            y
+        ) ** (1.5)
 
     def get_kurtosis(y):
         """
@@ -1540,30 +1568,52 @@ def fft_aggregated(x, param):
         :return type: float
         """
 
-        variance = get_variance(y)
+# @modified 20250611 - Branch #5630: v0.21.9
+# Variable changed from variance to var
+#        variance = get_variance(y)
+        var = get_variance(y)
         # In the limit of a dirac delta, kurtosis should be 3 and variance 0.  However, in the discrete limit,
         # the kurtosis blows up as variance --> 0, hence return nan when variance is smaller than a resolution of 0.5:
-        if variance < 0.5:
+# @modified 20250611 - Branch #5630: v0.21.9
+#        if variance < 0.5:
+        if var < 0.5:
             return np.nan
-        else:
-            return (
-                get_moment(y, 4)
-                - 4 * get_centroid(y) * get_moment(y, 3)
-                + 6 * get_moment(y, 2) * get_centroid(y) ** 2
-                - 3 * get_centroid(y)
-            ) / get_variance(y) ** 2
+# @modified 20250611 - Branch #5630: v0.21.9
+#        else:
+#            return (
+#                get_moment(y, 4)
+#                - 4 * get_centroid(y) * get_moment(y, 3)
+#                + 6 * get_moment(y, 2) * get_centroid(y) ** 2
+#                - 3 * get_centroid(y)
+#            ) / get_variance(y) ** 2
+        centroid = get_centroid(y)
+        return (
+            get_moment(y, 4)
+            - 4 * centroid * get_moment(y, 3)
+            + 6 * get_moment(y, 2) * centroid**2
+            - 3 * centroid
+        ) / get_variance(y) ** 2
 
-    calculation = dict(
-        centroid=get_centroid,
-        variance=get_variance,
-        skew=get_skew,
-        kurtosis=get_kurtosis,
-    )
+# @modified 20250611 - Branch #5630: v0.21.9
+#    calculation = dict(
+#        centroid=get_centroid,
+#        variance=get_variance,
+#        skew=get_skew,
+#        kurtosis=get_kurtosis,
+#    )
+    calculation = {
+        "centroid": get_centroid,
+        "variance": get_variance,
+        "skew": get_skew,
+        "kurtosis": get_kurtosis,
+    }
 
     fft_abs = np.abs(np.fft.rfft(x))
 
     res = [calculation[config["aggtype"]](fft_abs) for config in param]
-    index = ['aggtype_"{}"'.format(config["aggtype"]) for config in param]
+# @modified 20250611 - Branch #5630: v0.21.9
+#    index = ['aggtype_"{}"'.format(config["aggtype"]) for config in param]
+    index = [f'aggtype_"{config["aggtype"]}"' for config in param]
     return zip(index, res)
 
 
@@ -1630,17 +1680,41 @@ def index_mass_quantile(x, param):
 # @modified 20241105 - Branch #5534: v0.20.3-skyline
 # numpy 2 NaN deprecated
 #        return [("q_{}".format(config["q"]), np.NaN) for config in param]
-        return [("q_{}".format(config["q"]), np.nan) for config in param]
-    else:
-        # at least one value is not zero
-        mass_centralized = np.cumsum(abs_x) / s
-        return [
-            (
-                "q_{}".format(config["q"]),
-                (np.argmax(mass_centralized >= config["q"]) + 1) / len(x),
-            )
-            for config in param
-        ]
+# @modified 20250611 - Branch #5630: v0.21.9
+#        return [("q_{}".format(config["q"]), np.nan) for config in param]
+#    else:
+#        # at least one value is not zero
+#        mass_centralized = np.cumsum(abs_x) / s
+#        return [
+#            (
+#                "q_{}".format(config["q"]),
+#                (np.argmax(mass_centralized >= config["q"]) + 1) / len(x),
+#            )
+#            for config in param
+#        ]
+        return [(f"q_{config['q']}", np.nan) for config in param]
+    # at least one value is not zero
+    mass_centralized = np.cumsum(abs_x) / s
+    return [
+        (
+            f"q_{config['q']}",
+            (np.argmax(mass_centralized >= config["q"]) + 1) / len(x),
+        )
+        for config in param
+    ]
+
+
+# @added 20250611 - Branch #5630: v0.21.9
+def _ricker(points, a):
+    """Custom implementation of the ricker wavelet, copied from scipy as scipy dropped it."""
+    A = 2 / (np.sqrt(3 * a) * (np.pi**0.25))
+    wsq = a**2
+    vec = np.arange(0, points) - (points - 1.0) / 2
+    xsq = vec**2
+    mod = 1 - xsq / wsq
+    gauss = np.exp(-xsq / (2 * wsq))
+    total = A * mod * gauss
+    return total
 
 
 @set_property("fctype", "simple")
@@ -1660,7 +1734,11 @@ def number_cwt_peaks(x, n):
     :return type: int
     """
     return len(
-        find_peaks_cwt(vector=x, widths=np.array(list(range(1, n + 1))), wavelet=ricker)
+# @modified 20250611 - Branch #5630: v0.21.9
+#        find_peaks_cwt(vector=x, widths=np.array(list(range(1, n + 1))), wavelet=ricker)
+        find_peaks_cwt(
+            vector=x, widths=np.array(list(range(1, n + 1))), wavelet=_ricker
+        )
     )
 
 
@@ -1683,10 +1761,14 @@ def linear_trend(x, param):
     :return type: List[Tuple[str, float]]
     """
     # todo: we could use the index of the DataFrame here
-    linReg = linregress(range(len(x)), x)
+# @modified 20250611 - Branch #5630: v0.21.9
+#    linReg = linregress(range(len(x)), x)
+    lin_reg = linregress(range(len(x)), x)
 
     return [
-        ('attr_"{}"'.format(config["attr"]), getattr(linReg, config["attr"]))
+# @modified 20250611 - Branch #5630: v0.21.9
+#        ('attr_"{}"'.format(config["attr"]), getattr(linReg, config["attr"]))
+        (f'attr_"{config["attr"]}"', getattr(lin_reg, config["attr"]))
         for config in param
     ]
 
@@ -1724,7 +1806,9 @@ def cwt_coefficients(x, param):
         coeff = parameter_combination["coeff"]
 
         if widths not in calculated_cwt:
-            calculated_cwt[widths] = cwt(x, ricker, widths)
+# @modified 20250611 - Branch #5630: v0.21.9
+#            calculated_cwt[widths] = cwt(x, ricker, widths)
+            calculated_cwt[widths], _ = pywt.cwt(x, scales=widths, wavelet="mexh")
 
         calculated_cwt_for_widths = calculated_cwt[widths]
 
@@ -1761,9 +1845,14 @@ def spkt_welch_density(x, param):
     :return type: Iterator[Tuple[str, float]]
     """
 
-    freq, pxx = welch(x, nperseg=min(len(x), 256))
+# @modified 20250611 - Branch #5630: v0.21.9
+#    freq, pxx = welch(x, nperseg=min(len(x), 256))
+    max_length_per_segment = 256
+    _, pxx = welch(x, nperseg=min(len(x), max_length_per_segment))
     coeff = [config["coeff"] for config in param]
-    indices = ["coeff_{}".format(i) for i in coeff]
+# @modified 20250611 - Branch #5630: v0.21.9
+#    indices = ["coeff_{}".format(i) for i in coeff]
+    indices = [f"coeff_{i}" for i in coeff]
 
     if len(pxx) <= np.max(
         coeff
@@ -1783,8 +1872,10 @@ def spkt_welch_density(x, param):
 #            list(pxx[reduced_coeff]) + [np.NaN] * len(not_calculated_coefficients),
             list(pxx[reduced_coeff]) + [np.nan] * len(not_calculated_coefficients),
         )
-    else:
-        return zip(indices, pxx[coeff])
+# @modified 20250611 - Branch #5630: v0.21.9
+#    else:
+#        return zip(indices, pxx[coeff])
+    return zip(indices, pxx[coeff])
 
 
 @set_property("fctype", "combiner")
@@ -1852,8 +1943,9 @@ def ar_coefficient(x, param):
 #            res[column_name] = np.NaN
             res[column_name] = np.nan
 
-    return [(key, value) for key, value in res.items()]
-
+# @modified 20250611 - Branch #5630: v0.21.9
+#    return [(key, value) for key, value in res.items()]
+    return list(res.items())
 
 # @added 20201230 - Branch #3908: v0.9.1
 # Readded mean_abs_change_quantiles that was removed in v0.9.0
@@ -1934,10 +2026,15 @@ def change_quantiles(x, ql, qh, isabs, f_agg):
     ind = (bin_cat_0 & _roll(bin_cat_0, 1))[1:]
     if np.sum(ind) == 0:
         return 0
-    else:
-        ind_inside_corridor = np.where(ind == 1)
-        aggregator = getattr(np, f_agg)
-        return aggregator(div[ind_inside_corridor])
+
+# @modified 20250611 - Branch #5630: v0.21.9
+#    else:
+#        ind_inside_corridor = np.where(ind == 1)
+#        aggregator = getattr(np, f_agg)
+#        return aggregator(div[ind_inside_corridor])
+    ind_inside_corridor = np.where(ind == 1)
+    aggregator = getattr(np, f_agg)
+    return aggregator(div[ind_inside_corridor])
 
 
 # @added 20201230 - Branch #3908: v0.9.1
@@ -2078,11 +2175,14 @@ def c3(x, lag):
     if not isinstance(x, (np.ndarray, pd.Series)):
         x = np.asarray(x)
     n = x.size
-    if 2 * lag >= n:
-        return 0
-    else:
-        return np.mean((_roll(x, 2 * -lag) * _roll(x, -lag) * x)[0:(n - 2 * lag)])
 
+    if 2 * lag >= n:
+        return 0.0
+
+# @modified 20250611 - Branch #5630: v0.21.9
+#    else:
+#        return np.mean((_roll(x, 2 * -lag) * _roll(x, -lag) * x)[0:(n - 2 * lag)])
+    return np.mean((_roll(x, 2 * -lag) * _roll(x, -lag) * x)[0 : (n - 2 * lag)])
 
 # @added 20230105 - Branch #4456 - v0.19.1
 # Added and disabled the new mean_n_absolute_max algorithm which was added in v0.19.0
@@ -2328,7 +2428,10 @@ def fourier_entropy(x, bins):
     Ref: https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.signal.welch.html
 
     """
-    _, pxx = welch(x, nperseg=min(len(x), 256))
+# @modified 20250611 - Branch #5630: v0.21.9
+#    _, pxx = welch(x, nperseg=min(len(x), 256))
+    max_length_per_segment = 256
+    _, pxx = welch(x, nperseg=min(len(x), max_length_per_segment))
     return binned_entropy(pxx / np.max(pxx), bins)
 
 
@@ -2705,22 +2808,30 @@ def friedrich_coefficients(x, param):
         r = parameter_combination["r"]
         coeff = parameter_combination["coeff"]
 
-        assert coeff >= 0, "Coefficients must be positive or zero. Found {}".format(
-            coeff
-        )
+# @modified 20250611 - Branch #5630: v0.21.9
+#        assert coeff >= 0, "Coefficients must be positive or zero. Found {}".format(
+#            coeff
+#        )
+        assert coeff >= 0, f"Coefficients must be positive or zero. Found {coeff}"
 
         # calculate the current friedrich coefficients if they do not exist yet
         if m not in calculated or r not in calculated[m]:
             calculated[m][r] = _estimate_friedrich_coefficients(x, m, r)
 
         try:
-            res["coeff_{}__m_{}__r_{}".format(coeff, m, r)] = calculated[m][r][coeff]
+# @modified 20250611 - Branch #5630: v0.21.9
+#            res["coeff_{}__m_{}__r_{}".format(coeff, m, r)] = calculated[m][r][coeff]
+            res[f"coeff_{coeff}__m_{m}__r_{r}"] = calculated[m][r][coeff]
         except IndexError:
 # @modified 20241105 - Branch #5534: v0.20.3-skyline
 # numpy 2 NaN deprecated
 #            res["coeff_{}__m_{}__r_{}".format(coeff, m, r)] = np.NaN
-            res["coeff_{}__m_{}__r_{}".format(coeff, m, r)] = np.nan
-    return [(key, value) for key, value in res.items()]
+# @modified 20250611 - Branch #5630: v0.21.9
+#            res["coeff_{}__m_{}__r_{}".format(coeff, m, r)] = np.nan
+#    return [(key, value) for key, value in res.items()]
+            res[f"coeff_{coeff}__m_{m}__r_{r}"] = np.nan
+
+    return list(res.items())
 
 
 @set_property("fctype", "simple")
@@ -2816,9 +2927,11 @@ def agg_linear_trend(x, param):
         else:
             res_data.append(getattr(calculated_agg[f_agg][chunk_len], attr))
 
-        res_index.append(
-            'attr_"{}"__chunk_len_{}__f_agg_"{}"'.format(attr, chunk_len, f_agg)
-        )
+# @modified 20250611 - Branch #5630: v0.21.9
+#        res_index.append(
+#            'attr_"{}"__chunk_len_{}__f_agg_"{}"'.format(attr, chunk_len, f_agg)
+#        )
+        res_index.append(f'attr_"{attr}"__chunk_len_{chunk_len}__f_agg_"{f_agg}"')
 
     return zip(res_index, res_data)
 
@@ -2866,9 +2979,11 @@ def energy_ratio_by_chunks(x, param):
                 / full_series_energy
             )
 
-        res_index.append(
-            "num_segments_{}__segment_focus_{}".format(num_segments, segment_focus)
-        )
+# @modified 20250611 - Branch #5630: v0.21.9
+#        res_index.append(
+#            "num_segments_{}__segment_focus_{}".format(num_segments, segment_focus)
+#        )
+        res_index.append(f"num_segments_{num_segments}__segment_focus_{segment_focus}")
 
     # Materialize as list for Python 3 compatibility with name handling
     return list(zip(res_index, res_data))
@@ -2899,13 +3014,21 @@ def linear_trend_timewise(x, param):
 
     # Get differences between each timestamp and the first timestamp in seconds.
     # Then convert to hours and reshape for linear regression
+# @modified 20250611 - Branch #5630: v0.21.9
+    seconds_per_hr = 3600
     times_seconds = (ix - ix[0]).total_seconds()
-    times_hours = np.asarray(times_seconds / float(3600))
+#    times_hours = np.asarray(times_seconds / float(3600))
+    times_hours = np.asarray(times_seconds / float(seconds_per_hr))
 
-    linReg = linregress(times_hours, x.values)
+# @modified 20250611 - Branch #5630: v0.21.9
+#    linReg = linregress(times_hours, x.values)
+    lin_reg = linregress(times_hours, x.values)
 
+# @modified 20250611 - Branch #5630: v0.21.9
+#    return [
+#        ('attr_"{}"'.format(config["attr"]), getattr(linReg, config["attr"]))
     return [
-        ('attr_"{}"'.format(config["attr"]), getattr(linReg, config["attr"]))
+        (f'attr_"{config["attr"]}"', getattr(lin_reg, config["attr"]))
         for config in param
     ]
 
@@ -3103,22 +3226,39 @@ def matrix_profile(x, param):
 
             finite_indices = np.isfinite(m_p)
 
-            if feature == "min":
-                res[key] = np.min(m_p[finite_indices])
-            elif feature == "max":
-                res[key] = np.max(m_p[finite_indices])
-            elif feature == "mean":
-                res[key] = np.mean(m_p[finite_indices])
-            elif feature == "median":
-                res[key] = np.median(m_p[finite_indices])
-            elif feature == "25":
-                res[key] = np.percentile(m_p[finite_indices], 25)
-            elif feature == "75":
-                res[key] = np.percentile(m_p[finite_indices], 75)
+# @modified 20250611 - Branch #5630: v0.21.9
+#            if feature == "min":
+#                res[key] = np.min(m_p[finite_indices])
+#            elif feature == "max":
+#                res[key] = np.max(m_p[finite_indices])
+#            elif feature == "mean":
+#                res[key] = np.mean(m_p[finite_indices])
+#            elif feature == "median":
+#                res[key] = np.median(m_p[finite_indices])
+#            elif feature == "25":
+#                res[key] = np.percentile(m_p[finite_indices], 25)
+#            elif feature == "75":
+#                res[key] = np.percentile(m_p[finite_indices], 75)
+#            else:
+#                raise ValueError(f"Unknown feature {feature} for the matrix profile")
+#
+#    return [(key, value) for key, value in res.items()]
+
+            feature_map = {
+                "min": np.min,
+                "max": np.max,
+                "mean": np.mean,
+                "median": np.median,
+                "25": lambda data: np.percentile(data, 25),
+                "75": lambda data: np.percentile(data, 75),
+            }
+
+            if feature in feature_map:
+                res[key] = feature_map[feature](m_p[finite_indices])
             else:
                 raise ValueError(f"Unknown feature {feature} for the matrix profile")
 
-    return [(key, value) for key, value in res.items()]
+    return list(res.items())
 
 
 @set_property("fctype", "combiner")
@@ -3145,14 +3285,16 @@ def query_similarity_count(x, param):
                   corresponds to finding exact matches to `Q`. Finally, for
                   non-normalized (i.e., without z-normalization) Euclidean set
                   `norm` (bool) to `False.
-    :type param: list
+    :type param: list[dict]
     :return x: the different feature values
     :return type: List[Tuple[str, int | np.nan]]
     """
     res = {}
     T = np.asarray(x).astype(float)
 
-    for i, kwargs in enumerate(param):
+# @modified 20250611 - Branch #5630: v0.21.9
+#    for i, kwargs in enumerate(param):
+    for kwargs in param:
         key = convert_to_output_format(kwargs)
         normalize = kwargs.get("normalize", True)
         threshold = kwargs.get("threshold", 0.0)
@@ -3168,4 +3310,6 @@ def query_similarity_count(x, param):
 
         res[key] = count
 
-    return [(key, value) for key, value in res.items()]
+# @modified 20250611 - Branch #5630: v0.21.9
+#    return [(key, value) for key, value in res.items()]
+    return list(res.items())
