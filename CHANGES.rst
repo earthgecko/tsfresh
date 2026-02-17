@@ -4,6 +4,15 @@ Changelog
 
 tsfresh uses `Semantic Versioning <http://semver.org/>`_
 
+Version 0.21.9 - earthgecko/tsfresh based on blue-yonder/tsfresh-v0.21.1
+========================================================================
+- Updated version for Skyline compatibility
+
+Version 0.21.1
+==============
+- Bugfixes/Typos/Documentation:
+    - Remove pkg_resources in preparation for its deprecation. (#1116)
+
 Version 0.21.9 - earthgecko/tsfresh based on blue-yonder/tsfresh-v0.21.0
 ========================================================================
 - Updated version for Skyline compatibility

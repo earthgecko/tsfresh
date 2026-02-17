@@ -454,7 +454,7 @@ def mean_autocorrelation(x):
 
     .. math::
 
-        \\frac{1}{n} \\sum_{l=1,\ldots, n} \\frac{1}{(n-l)\sigma^{2}} \\sum_{t=1}^{n-l}(X_{t}-\\mu )(X_{t+l}-\\mu)
+        \\frac{1}{n} \\sum_{l=1,\\ldots, n} \\frac{1}{(n-l)\\sigma^{2}} \\sum_{t=1}^{n-l}(X_{t}-\\mu )(X_{t+l}-\\mu)
 
     where :math:`n` is the length of the time series :math:`X_i`, :math:`\sigma^2` its variance and :math:`\mu` its
     mean.
@@ -1848,6 +1848,10 @@ def spkt_welch_density(x, param):
 # @modified 20250611 - Branch #5630: v0.21.9
 #    freq, pxx = welch(x, nperseg=min(len(x), 256))
     max_length_per_segment = 256
+# @added 20260210 - Branch #5706: v0.21.91
+# Added ensuring x is a np array
+    x = np.asarray(x)
+
     _, pxx = welch(x, nperseg=min(len(x), max_length_per_segment))
     coeff = [config["coeff"] for config in param]
 # @modified 20250611 - Branch #5630: v0.21.9
@@ -2049,13 +2053,13 @@ def time_reversal_asymmetry_statistic(x, lag):
 
     .. math::
 
-        \\frac{1}{n-2lag} \sum_{i=0}^{n-2lag} x_{i + 2 \cdot lag}^2 \cdot x_{i + lag} - x_{i + lag} \cdot  x_{i}^2
+        \\frac{1}{n-2lag} \\sum_{i=0}^{n-2lag} x_{i + 2 \\cdot lag}^2 \\cdot x_{i + lag} - x_{i + lag} \\cdot  x_{i}^2
 
     which is
 
     .. math::
 
-        \\mathbb{E}[L^2(X)^2 \cdot L(X) - L(X) \cdot X^2]
+        \\mathbb{E}[L^2(X)^2 \\cdot L(X) - L(X) \\cdot X^2]
 
     where :math:`\\mathbb{E}` is the mean and :math:`L` is the lag operator. It was proposed in [1] as a
     promising feature to extract from time series.
@@ -2431,6 +2435,10 @@ def fourier_entropy(x, bins):
 # @modified 20250611 - Branch #5630: v0.21.9
 #    _, pxx = welch(x, nperseg=min(len(x), 256))
     max_length_per_segment = 256
+# @added 20260210 - Branch #5706: v0.21.91
+# Added ensuring x is a np array
+    x = np.asarray(x)
+
     _, pxx = welch(x, nperseg=min(len(x), max_length_per_segment))
     return binned_entropy(pxx / np.max(pxx), bins)
 

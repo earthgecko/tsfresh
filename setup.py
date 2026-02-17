@@ -9,15 +9,26 @@
 """
 import sys
 
-from pkg_resources import VersionConflict, require
+# @modified 20260211 - Branch #5706: v0.21.91
+# pkg_resources API deprecated
+#from pkg_resources import VersionConflict, require
 from setuptools import setup
 
-try:
-    require("setuptools>=38.3")
-except VersionConflict:
-    print("Error: version of setuptools is too old (<38.3)!")
-    sys.exit(1)
+# @modified 20260211 - Branch #5706: v0.21.91
+# pkg_resources API deprecated
+#try:
+#    require("setuptools>=38.3")
+#except VersionConflict:
+#    print("Error: version of setuptools is too old (<38.3)!")
+#    sys.exit(1)
 
 
 if __name__ == "__main__":
-    setup(use_pyscaffold=True)
+# @modified 20260211 - Branch #5706: v0.21.91
+# Remove pyscaffold
+#    setup(use_pyscaffold=True)
+    setup(
+# @added 20260211 - Branch #5706: v0.21.91
+	name='tsfresh',
+	version='0.21.91',
+    )

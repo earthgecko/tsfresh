@@ -8,11 +8,15 @@ At the top level we export the three most important submodules of tsfresh, which
     * :mod:`~tsfresh.extract_relevant_features`
 """
 
-
-import pkg_resources
+# @modified 20260210 - Branch #5706: v0.21.91
+# API has depreated pkg_resources
+#import pkg_resources
+from importlib.metadata import version
 
 try:
-    __version__ = pkg_resources.get_distribution(__name__).version
+# @modified 20260210 - Branch #5706: v0.21.91
+#    __version__ = pkg_resources.get_distribution(__name__).version
+    __version__ = version("tsfresh")
 except Exception:
     __version__ = "unknown"
 

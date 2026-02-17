@@ -46,7 +46,9 @@ if 'dirty' in TSFRESH_BASELINE_VERSION:
     TSFRESH_BASELINE_VERSION = TSFRESH_BASELINE_VERSION.rsplit('+', 1)[0]
 
 # Directly declared every version hardcoded
-TSFRESH_BASELINE_VERSION = '0.21.9'
+# @modified 20260211 - Branch #5706: v0.21.91
+#TSFRESH_BASELINE_VERSION = '0.21.9'
+TSFRESH_BASELINE_VERSION = '0.21.91'
 
 # IO stuff, getting directories to read and to write
 baseline_dir = os.path.dirname(os.path.realpath(__file__))

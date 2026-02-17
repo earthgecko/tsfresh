@@ -27,10 +27,12 @@ Further it must run the same algorithms in every version.
 A features profile calculated with earthgecko/tsfresh v0.4.0 should be the same if it is generated earthgecko/tsfresh v0-17.9 or v0.19.1
 
 Version mappings to which blueyonder/tsfresh the earthgecko/tsfresh version is based on:
-blueyonder/tsfresh-v0.17.1 -> earthgecko/tsfresh-v0-17.9
-blueyonder/tsfresh-v0.20.0 -> earthgecko/tsfresh-v0-19.1
-blueyonder/tsfresh-v0.20.3 -> earthgecko/tsfresh-v0-20.3-skyline
-blueyonder/tsfresh-v0.21.0 -> earthgecko/tsfresh-v0-21.9
+
+- blueyonder/tsfresh-v0.17.1 -> earthgecko/tsfresh-v0-17.9
+- blueyonder/tsfresh-v0.20.0 -> earthgecko/tsfresh-v0-19.1
+- blueyonder/tsfresh-v0.20.3 -> earthgecko/tsfresh-v0-20.3-skyline
+- blueyonder/tsfresh-v0.21.0 -> earthgecko/tsfresh-v0-21.9
+- blueyonder/tsfresh-v0.21.1 -> earthgecko/tsfresh-v0-21.91
 
 It must be noted that the results of the features calculations will change in decimal precision or decimal values
 between Python versions, library versions and even machines.  These changes are acceptable from a Skyline perspective and are
