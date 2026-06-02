@@ -30,5 +30,7 @@ if __name__ == "__main__":
     setup(
 # @added 20260211 - Branch #5706: v0.21.91
 	name='tsfresh',
-	version='0.21.91',
+# @modified 20260602 - Branch #5750: v0.21.92
+#	version='0.21.91',
+	version='0.21.92',
     )

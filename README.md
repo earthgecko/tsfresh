@@ -108,6 +108,10 @@ Systematic time-series feature extraction even works for unsupervised problems:
     _Expect the Unexpected: Unsupervised feature selection for automated sensor anomaly detection._
     IEEE Sensors Journal 15.16, p. 18033-18046, [doi: 10.1109/JSEN.2021.3084970](https://doi.org/10.1109/JSEN.2021.3084970).
 
+* Teh, H.Y., Wang, K.I-K., Kempa-Liehr, A.W. (2025).
+    _Feature-based normality models for anomaly detection._
+    Sensors 25.4757, p. 1-25, [doi: 10.3390/s25154757](https://doi.org/10.3390/s25154757).
+
 Due to the fact that tsfresh basically provides time-series feature extraction for free, you can now concentrate on engineering new time-series,
 like e.g. differences of signals from synchronous measurements, which provide even better time-series features:
 
@@ -134,6 +138,17 @@ might solve your problem:
 * Dempsey, D.E., Cronin, S.J., Mei, S., Kempa-Liehr, A.W. (2020).
     _Automatic precursor recognition and real-time forecasting of sudden explosive volcanic eruptions at Whakaari, New Zealand_.
     Nature Communications 11.3562, p. 1-8, [doi: 10.1038/s41467-020-17375-2](https://doi.org/10.1038/s41467-020-17375-2).
+
+You are not working with time-series, but with 2D and 3D images? Spatial variation sequences (SVS) are an excellent application for tsfresh:
+
+* Jeune, H., Pechan, N., Reitsma, S., Kempa-Liehr, A.W. (2021).
+    _Spatial Variation Sequences for Remote Sensing Applications with Small Sample Sizes._
+    In: 2024 Image and Video Technology. 11th Pacific-Rim Symposium, Ed. by W.Q. Yan et al.,
+    Lecture Notes in Computer Science (14403). Springer Nature: Singapore, p. 153-166. [doi: {10.1007/978-981-97-0376-0_12](https://doi.org/{10.1007/978-981-97-0376-0_12).
+
+* Koptev, I., Tian, J., Peel, E., Parker, R., Walker, C., Kempa-Liehr, A.W. (2025).
+    _Interpretable Dimensionality Reduction in 3D Image Recognition with Small Sample Sizes_.
+    Journal of Nondestructive Evaluation 44.44, p. 1-12, [doi: 10.1007/s10921-025-01183-z](https://doi.org/10.1007/s10921-025-01183-z).
 
 Natural language processing of written texts is an example of applying systematic time-series feature engineering to event sequences,
 which is described in the following open access paper:

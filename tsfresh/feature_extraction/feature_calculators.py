@@ -456,7 +456,7 @@ def mean_autocorrelation(x):
 
         \\frac{1}{n} \\sum_{l=1,\\ldots, n} \\frac{1}{(n-l)\\sigma^{2}} \\sum_{t=1}^{n-l}(X_{t}-\\mu )(X_{t+l}-\\mu)
 
-    where :math:`n` is the length of the time series :math:`X_i`, :math:`\sigma^2` its variance and :math:`\mu` its
+    where :math:`n` is the length of the time series :math:`X_i`, :math:`\\sigma^2` its variance and :math:`\\mu` its
     mean.
 
     :param x: the time series to calculate the feature of
@@ -2014,7 +2014,7 @@ def change_quantiles(x, ql, qh, isabs, f_agg):
     :return type: float
     """
     if ql >= qh:
-        return 0
+        return 0.0
 
     div = np.diff(x)
     if isabs:
@@ -2025,11 +2025,11 @@ def change_quantiles(x, ql, qh, isabs, f_agg):
         bin_cat = pd.qcut(x, [ql, qh], labels=False)
         bin_cat_0 = bin_cat == 0
     except ValueError:  # Occurs when ql are qh effectively equal, e.g. x is not long enough or is too categorical
-        return 0
+        return 0.0
     # We only count changes that start and end inside the corridor
     ind = (bin_cat_0 & _roll(bin_cat_0, 1))[1:]
     if np.sum(ind) == 0:
-        return 0
+        return 0.0
 
 # @modified 20250611 - Branch #5630: v0.21.9
 #    else:
@@ -2134,7 +2134,7 @@ def v090_time_reversal_asymmetry_statistic(x, lag):
     n = len(x)
     x = np.asarray(x)
     if 2 * lag >= n:
-        return 0
+        return 0.0
     else:
         one_lag = _roll(x, -lag)
         two_lag = _roll(x, 2 * -lag)

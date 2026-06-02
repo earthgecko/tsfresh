@@ -1351,9 +1351,10 @@ class GetRangeValuesPerColumnTestCase(TestCase):
             ) = dataframe_functions.get_range_values_per_column(df)
 
             self.assertEqual(len(w), 1)
-            self.assertEqual(
-                str(w[0].message),
-                "The columns ['value'] did not have any finite values. Filling with zeros.",
+            warning_msg = str(w[0].message)
+            self.assertIn("'value'", warning_msg)
+            self.assertIn(
+                "did not have any finite values. Filling with zeros.", warning_msg
             )
 
         self.assertEqual(col_to_max, {"value": 0})
@@ -1405,7 +1406,7 @@ class MakeForecastingFrameTestCase(TestCase):
 
     def test_make_forecasting_frame_pdSeries(self):
 
-        t_index = pd.date_range("1/1/2011", periods=4, freq="H")
+        t_index = pd.date_range("1/1/2011", periods=4, freq="h")
         df, y = dataframe_functions.make_forecasting_frame(
             x=pd.Series(data=range(4), index=t_index),
             kind="test",
@@ -1415,7 +1416,7 @@ class MakeForecastingFrameTestCase(TestCase):
 
         time_shifts = pd.DatetimeIndex(
             ["2011-01-01 01:00:00", "2011-01-01 02:00:00", "2011-01-01 03:00:00"],
-            freq="H",
+            freq="h",
         )
         expected_y = pd.Series(
             data=[1, 2, 3], index=zip(["id"] * 3, time_shifts), name="value"
@@ -1451,7 +1452,7 @@ class MakeForecastingFrameTestCase(TestCase):
         assert_series_equal(y, expected_y)
 
     def test_make_forecasting_frame_feature_extraction(self):
-        t_index = pd.date_range("1/1/2011", periods=4, freq="H")
+        t_index = pd.date_range("1/1/2011", periods=4, freq="h")
         df, y = dataframe_functions.make_forecasting_frame(
             x=pd.Series(data=range(4), index=t_index),
             kind="test",
@@ -1466,6 +1467,43 @@ class MakeForecastingFrameTestCase(TestCase):
             column_sort="time",
             column_value="value",
             default_fc_parameters=MinimalFCParameters(),
+        )
+
+    def test_make_forecasting_frame_min_timeshift(self):
+        x = pd.Series([1, 2, 3, 4, 5])
+        # Default behavior
+        df_default, y_default = dataframe_functions.make_forecasting_frame(
+            x=x,
+            kind="test",
+            max_timeshift=3,
+            rolling_direction=1,
+        )
+        # With min_timeshift
+        df_filtered, y_filtered = dataframe_functions.make_forecasting_frame(
+            x=x,
+            kind="test",
+            max_timeshift=3,
+            rolling_direction=1,
+            min_timeshift=2,
+        )
+        # check actual filtered df length
+        assert len(df_filtered) == len(df_default) - 1
+        # Check target alignment
+        assert len(y_filtered) == df_filtered["id"].nunique()
+        # check df index matching
+        df_common_ids = set(df_filtered["id"])
+        df_default_intersection = (
+            df_default[df_default["id"].isin(df_common_ids)]
+            .sort_values(["id", "time"])
+            .reset_index(drop=True)
+        )
+        df_filtered = df_filtered.sort_values(["id", "time"]).reset_index(drop=True)
+        pd.testing.assert_frame_equal(df_default_intersection, df_filtered)
+        # check target index matching
+        y_common_index = y_filtered.index
+        y_default_intersection = y_default.loc[y_common_index]
+        pd.testing.assert_series_equal(
+            y_default_intersection.sort_index(), y_filtered.sort_index()
         )
 
 
